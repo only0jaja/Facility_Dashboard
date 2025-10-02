@@ -1,0 +1,352 @@
+<?php
+include 'conn.php';
+?>
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Room Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+    }
+
+    body {
+      display: flex;
+      background-color: #f5f7fb;
+      min-height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 250px;
+      background-color: #0047AB;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      padding: 20px;
+      position: fixed;
+      transition: transform 0.3s ease;
+    }
+
+    .sidebar h1 {
+      font-size: 24px;
+      margin-bottom: 40px;
+      color: #FFD700;
+    }
+
+    .sidebar a {
+      color: white;
+      text-decoration: none;
+      margin: 10px 0;
+      display: flex;
+      align-items: center;
+      padding: 12px;
+      border-radius: 8px;
+      font-weight: 500;
+      transition: background 0.3s ease;
+    }
+
+    .sidebar a:hover,
+    .sidebar a.active {
+      background-color: #005ce6;
+    }
+
+    .sidebar .user {
+      margin-top: auto;
+      display: flex;
+      align-items: center;
+      padding: 15px;
+      border-top: 1px solid #ffffff33;
+      font-size: 14px;
+    }
+
+    .sidebar .user span {
+      margin-left: 10px;
+    }
+
+    /* Main Content */
+    .main {
+      flex: 1;
+      padding: 30px;
+      margin-left: 250px;
+      transition: margin-left 0.3s ease;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+
+    .header h2 {
+      font-size: 22px;
+    }
+
+    .header input {
+      padding: 10px 15px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      flex: 1;
+      max-width: 250px;
+    }
+
+    /* Cards */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      margin-top: 20px;
+      gap: 20px;
+    }
+
+    .card {
+      background-color: #0047AB;
+      color: white;
+      padding: 25px;
+      border-radius: 15px;
+      text-align: center;
+      transition: transform 0.2s ease;
+      cursor: pointer;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      background-color: #005ce6;
+    }
+
+    .card h3 {
+      font-size: 32px;
+      margin-bottom: 5px;
+    }
+
+    .card p {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    /* Table */
+    .table-section {
+      margin-top: 40px;
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      overflow-x: auto;
+    }
+
+    .table-section h3 {
+      margin-bottom: 20px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 600px;
+    }
+
+    th, td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+      font-size: 14px;
+    }
+
+    th {
+      background-color: #f0f0f0;
+      font-weight: 600;
+    }
+
+    .status {
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      display: inline-block;
+    }
+
+    .available {
+      background-color: #e0f7ea;
+      color: #00b894;
+    }
+
+    .unavailable {
+      background-color: #fff3cd;
+      color: #d39e00;
+    }
+
+    /* Pagination */
+    .pagination {
+      margin-top: 20px;
+      text-align: right;
+    }
+
+    .pagination button {
+      padding: 8px 12px;
+      margin-left: 5px;
+      border: none;
+      background-color: #eee;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    .pagination button:hover {
+      background-color: #ddd;
+    }
+
+    .pagination button.active {
+      background-color: #0047AB;
+      color: white;
+    }
+
+    /* Mobile Responsiveness */
+    @media (max-width: 900px) {
+      .sidebar {
+        transform: translateX(-100%);
+        position: fixed;
+        z-index: 1000;
+      }
+      .sidebar.active {
+        transform: translateX(0);
+      }
+      .main {
+        margin-left: 0;
+      }
+      .menu-toggle {
+        display: block;
+        cursor: pointer;
+        font-size: 24px;
+        color: #0047AB;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .header input {
+        width: 100%;
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <h1>Dashboard</h1>
+    <a href="#" class="active">🏠 Home</a>
+    <a href="#">👥 Users</a>
+    <a href="#">📁 Rooms</a>
+    <a href="#">📜 Access Logs</a>
+    <a href="#">⚙️ Settings</a>
+    <a href="#">🚪 Log out</a>
+    <div class="user">
+      👤 <span>Juan<br><small>Faculty Member</small></span>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main">
+    <div class="header">
+      <span class="menu-toggle" onclick="toggleMenu()">☰</span>
+      <h2>Hello Juan 👋🏼</h2>
+      <input type="search" placeholder="Search..." />
+    </div>
+     <?php 
+      
+      $totalroom = $conn->query("SELECT COUNT(*) AS total FROM classrooms")->fetch_assoc();
+      $totaloccupied = $conn->query("SELECT COUNT(*) AS total FROM classrooms WHERE status = 'occupied'")->fetch_assoc();
+      $totalusers = $conn->query("SELECT COUNT(*) AS total FROM users")->fetch_assoc();
+
+      
+     ?>
+  
+    <div class="cards">
+      <div class="card">
+        <h3><?php echo $totalroom['total']; ?></h3>
+        <p>Total Rooms</p>
+      </div>
+      <div class="card">
+        <h3><?php echo $totaloccupied['total']; ?></h3>
+        <p>Active Rooms</p>
+      </div>
+      <div class="card">
+        <h3><?php echo $totalusers['total']; ?></h3>
+        <p>Total Users</p>
+      </div>
+      <div class="card">
+        <h3>120</h3>
+        <p>Total Access</p>
+      </div>
+    </div>
+    <div class="table-section">
+      <h3>Room Availability</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Log_id</th>
+            <th>User_id</th>
+            <th>Rfid_tag</th>
+            <th>Schedule_id</th>
+            <th>Access_time</th>
+            <th>Access_type</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        
+            <?php 
+              $log_id = $conn->query("SELECT * FROM access_log ORDER BY Access_time DESC LIMIT 10");
+            ?>
+        <tbody>
+          <?php if ($log_id->num_rows > 0): ?>
+            <?php while($row = $log_id->fetch_assoc()): ?>
+              <tr>
+                <td><?php echo $row['Log_id']; ?></td>
+                <td><?php echo $row['User_id']; ?></td>
+                <td><?php echo $row['Rfid_tag']; ?></td>
+                <td><?php echo $row['Schedule_id']; ?></td>
+                <td><?php echo $row['Access_time']; ?></td>
+                <td><?php echo $row['Access_type']; ?></td>
+                <td><?php echo $row['Status']; ?></td>
+              </tr>
+        <?php endwhile; ?>
+          <?php else: ?>
+            <tr>
+              <td colspan="7" style="text-align: center;">No records found.</td>
+            </tr>
+          <?php endif; ?>
+        </tbody>
+      </table>
+
+      <div class="pagination">
+        <button class="active">1</button>
+        <button>2</button>
+        <button>3</button>
+        <button>...</button>
+        <button>40</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function toggleMenu() {
+      document.getElementById("sidebar").classList.toggle("active");
+    }
+  </script>
+
+</body>
+</html>
