@@ -15,7 +15,7 @@
     <a href="users.php">👥 Users</a>
     <a href="rooms.php">📁 Rooms</a>
     <a href="" class="active">📜 Access Logs</a>
-    <a href="#">⚙️ Settings</a>
+    <a href="#">⚙️ Schedule</a>
     <a href="logout.php">🚪 Log out</a>
     <div class="user">
       👤 <span>Juan<br><small>Faculty Member</small></span>
@@ -33,16 +33,21 @@
             <th>Log_id</th>
             <th>User_id</th>
             <th>Rfid_tag</th>
-            <th>Schedule_id</th>
-            <th>Access_time</th>
-            <th>Access_type</th>
+            <th>Room</th>
+             <th>Access_time</th> 
+             <th>Access_type</th> 
             <th>Status</th>
           </tr>
         </thead>
         
             <?php 
               include  'conn.php';
-              $log_id = $conn->query("SELECT * FROM access_log ORDER BY Access_time DESC");
+              $log_id = $conn->query("
+                SELECT access_log.*, classrooms.Room_code 
+                FROM access_log 
+                LEFT JOIN classrooms ON access_log.Room_id = classrooms.Room_id 
+                ORDER BY Access_time DESC
+              ");
             ?>
         <tbody>
           <?php if ($log_id->num_rows > 0): ?>
@@ -51,9 +56,9 @@
                 <td><?php echo $row['Log_id']; ?></td>
                 <td><?php echo $row['User_id']; ?></td>
                 <td><?php echo $row['Rfid_tag']; ?></td>
-                <td><?php echo $row['Schedule_id']; ?></td>
-                <td><?php echo $row['Access_time']; ?></td>
-                <td><?php echo $row['Access_type']; ?></td>
+                <td><?php echo $row['Room_id']; ?></td>
+                <td><?= $row['Access_time']; ?></td>
+                <td><?= $row['Access_type']; ?></td>
                 <td><?php echo $row['Status']; ?></td>
               </tr>
         <?php endwhile; ?>

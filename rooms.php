@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+     <!-- Font Awesome CDN -->
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
+/>
+
   <link rel="stylesheet" href="styles/rooms.css">
 </head>
 <body>
@@ -14,7 +20,7 @@
     <a href="users.php">👥 Users</a>
     <a href=""class="active">📁 Rooms</a>
     <a href="access_logs.php">📜 Access Logs</a>
-    <a href="#">⚙️ Settings</a>
+    <a href="#"><i class="fa-solid fa-calendar-days"></i> Schedule</a>
     <a href="logout.php">🚪 Log out</a>
     <div class="user">
       👤 <span>Juan<br><small>Faculty Member</small></span>
@@ -78,8 +84,24 @@
 
     </section>
 
- </div>
+    </div>
   </div>
+  <script>
+    function loadRooms() {
+      fetch('fetch_room.php')
+        .then(response => response.text())
+        .then(data => {
+          const roomGrid = document.querySelector('.room-grid');
+          roomGrid.innerHTML = data;
+          roomGrid.classList.add('fade');
+          setTimeout(() => roomGrid.classList.remove('fade'), 400);
+        })
+        .catch(err => console.error('Error loading rooms:', err));
+    }
 
+    // Load every 3 seconds (adjust if needed)
+    setInterval(loadRooms, 1000);
+    window.onload = loadRooms;
+  </script>
 </body>
 </html>

@@ -20,7 +20,7 @@ include 'conn.php';
     <a href="users.php">👥 Users</a>
     <a href="rooms.php">📁 Rooms</a>
     <a href="access_logs.php">📜 Access Logs</a>
-    <a href="#">⚙️ Settings</a>
+    <a href="schedule.php">⚙️ Schedule</a>
     <a href="logout.php">🚪 Log out</a>
     <div class="user">
       👤 <span>Juan<br><small>Faculty Member</small></span>
@@ -37,6 +37,7 @@ include 'conn.php';
      <?php    
       $totalroom = $conn->query("SELECT COUNT(*) AS total FROM classrooms")->fetch_assoc();
       $totaloccupied = $conn->query("SELECT COUNT(*) AS total FROM classrooms WHERE status = 'occupied'")->fetch_assoc();
+      $totalUnoccupied = $conn->query("SELECT COUNT(*) AS total FROM classrooms WHERE status = 'Unoccupied'")->fetch_assoc();
       $totalusers = $conn->query("SELECT COUNT(*) AS total FROM users")->fetch_assoc();    
      ?>
     
@@ -46,16 +47,16 @@ include 'conn.php';
         <p>Total Rooms</p>
       </div>
       <div class="card">
-        <h3><?php echo $totaloccupied['total']; ?></h3>
-        <p>Active Rooms</p>
-      </div>
-      <div class="card">
         <h3><?php echo $totalusers['total']; ?></h3>
         <p>Total Users</p>
       </div>
       <div class="card">
-        <h3>120</h3>
-        <p>Total Access</p>
+        <h3><?php echo $totaloccupied['total']; ?></h3>
+        <p>Occupied Rooms</p>
+      </div>
+      <div class="card">
+        <h3><?php echo $totalUnoccupied['total']; ?></h3>
+        <p>Unoccupied Rooms</p>
       </div>
     </div>
     <div class="table-section">
@@ -66,7 +67,7 @@ include 'conn.php';
             <th>Log_id</th>
             <th>User_id</th>
             <th>Rfid_tag</th>
-            <th>Schedule_id</th>
+            <th>Room_Code</th>
             <th>Access_time</th>
             <th>Access_type</th>
             <th>Status</th>
@@ -74,7 +75,15 @@ include 'conn.php';
         </thead>
         
             <?php 
-              $log_id = $conn->query("SELECT * FROM access_log ORDER BY Access_time DESC LIMIT 10");
+                $log_id = $conn->query("
+                  SELECT 
+                    access_log.*,
+                    classrooms.Room_code
+                  FROM access_log
+                  JOIN classrooms ON access_log.Room_id = classrooms.Room_id
+                  ORDER BY access_log.Access_time DESC
+                  LIMIT 10
+                ");
             ?>
         <tbody>
           <?php if ($log_id->num_rows > 0): ?>
@@ -83,7 +92,7 @@ include 'conn.php';
                 <td><?php echo $row['Log_id']; ?></td>
                 <td><?php echo $row['User_id']; ?></td>
                 <td><?php echo $row['Rfid_tag']; ?></td>
-                <td><?php echo $row['Schedule_id']; ?></td>
+                <td><?php echo $row['Room_code']; ?></td>
                 <td><?php echo $row['Access_time']; ?></td>
                 <td><?php echo $row['Access_type']; ?></td>
                 <td><?php echo $row['Status']; ?></td>
