@@ -20,7 +20,7 @@
     <a href="users.php">👥 Users</a>
     <a href=""class="active">📁 Rooms</a>
     <a href="access_logs.php">📜 Access Logs</a>
-    <a href="#"><i class="fa-solid fa-calendar-days"></i> Schedule</a>
+    <a href="schedule.php"><i class="fa-solid fa-calendar-days"></i> Schedule</a>
     <a href="logout.php">🚪 Log out</a>
     <div class="user">
       👤 <span>Juan<br><small>Faculty Member</small></span>

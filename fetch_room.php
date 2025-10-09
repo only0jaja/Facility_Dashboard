@@ -13,8 +13,8 @@ while ($row = mysqli_fetch_assoc($rooms)):
       <h4><?php echo $row['Room_code']; ?></h4>
       <span class="status <?php echo $statusClass; ?>"><?php echo $row['Status']; ?></span>
     </div>
-    <p>👥 Capacity: <?php echo $row['capacity']; ?></p>
-    <p>🏫 Type: <?php echo $row['classroom_type']; ?></p>
+    <p>👥 Capacity: <?php echo $row['Capacity']; ?></p>
+    <p>🏫 Type: <?php echo $row['Classroom_type']; ?></p>
     <div class="card-actions">
       <button class="edit">Edit</button>
     </div>

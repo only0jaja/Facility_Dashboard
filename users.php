@@ -16,7 +16,7 @@
     <a href="" class="active">👥 Users</a>
     <a href="rooms.php">📁 Rooms</a>
     <a href="access_logs.php">📜 Access Logs</a>
-    <a href="#">⚙️ Settings</a>
+    <a href="schedule.php">⚙️ Schedule</a>
     <a href="logout.php">🚪 Log out</a>
     <div class="user">
       👤 <span>Juan<br><small>Faculty Member</small></span>
@@ -38,19 +38,15 @@
             <th>Rfid_tag</th>
             <th>f_name</th>
             <th>l_name</th>
-            <th>Course</th>
-            <th>Course</th>
-            <th>Section</th>
-            <th>Year</th>
-            <th>Semester</th>
+            <th>CourseSection</th>
             <th>Role</th>
             <th>Status</th>
           </tr>
         </thead>
         <?php 
           include 'conn.php';
-          
-          $sql = 'select * from users';
+
+          $sql = 'select *, course_section.CourseSection from users JOIN course_section ON users.courseSection_id = course_section.courseSection_id';
           $users = mysqli_query($conn,$sql);
         ?>
         <tbody>
@@ -60,10 +56,7 @@
            <td><?php echo $row['Rfid_tag'];?></td>
            <td><?php echo $row['F_name'];?></td>
            <td><?php echo $row['L_name'];?></td>
-           <td><?php echo $row['Course'];?></td>
-           <td><?php echo $row['Section'];?></td>
-           <td><?php echo $row['Year'];?></td>
-           <td><?php echo $row['Semester'];?></td>
+           <td><?php echo $row['CourseSection'];?></td>
            <td><?php echo $row['Role'];?></td>
            <td><?php echo $row['Status'];?></td>
           </tr>
