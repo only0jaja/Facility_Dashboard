@@ -59,7 +59,11 @@
                 <td><?php echo $row['Room_id']; ?></td>
                 <td><?= $row['Access_time']; ?></td>
                 <td><?= $row['Access_type']; ?></td>
-                <td><?php echo $row['Status']; ?></td>
+                <td style="text-align: center;">
+                  <span class="status <?php echo strtolower($row['Status']); ?>">
+                    <?php echo $row['Status']; ?>
+                  </span>
+                </td>
               </tr>
         <?php endwhile; ?>
           <?php else: ?>

@@ -155,10 +155,20 @@
 
     .status {
       padding: 6px 12px;
-      border-radius: 20px;
+      border-radius: 10px;
+      width: 73px;
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 500;
       display: inline-block;
+      color: white;
+    }
+    
+    .status.granted {
+      background-color: #00c896;
+    }
+
+    .status.denied {
+      background-color: #e40959;
     }
 
     .available {

@@ -40,25 +40,25 @@ include 'conn.php';
       $totalUnoccupied = $conn->query("SELECT COUNT(*) AS total FROM classrooms WHERE status = 'Unoccupied'")->fetch_assoc();
       $totalusers = $conn->query("SELECT COUNT(*) AS total FROM users")->fetch_assoc();    
      ?>
-    
     <div class="cards">
       <div class="card">
-        <h3><?php echo $totalroom['total']; ?></h3>
+        <h3 id="totalroom"><?php echo $totalroom['total']; ?></h3>
         <p>Total Rooms</p>
       </div>
       <div class="card">
-        <h3><?php echo $totalusers['total']; ?></h3>
+        <h3 id="totalusers"><?php echo $totalusers['total']; ?></h3>
         <p>Total Users</p>
       </div>
       <div class="card">
-        <h3><?php echo $totaloccupied['total']; ?></h3>
+        <h3 id="totaloccupied"><?php echo $totaloccupied['total']; ?></h3>
         <p>Occupied Rooms</p>
       </div>
       <div class="card">
-        <h3><?php echo $totalUnoccupied['total']; ?></h3>
+        <h3 id="totalUnoccupied"><?php echo $totalUnoccupied['total']; ?></h3>
         <p>Unoccupied Rooms</p>
       </div>
     </div>
+
     <div class="table-section">
       <h3>Room Availability</h3>
       <table>
@@ -95,7 +95,11 @@ include 'conn.php';
                 <td><?php echo $row['Room_code']; ?></td>
                 <td><?php echo $row['Access_time']; ?></td>
                 <td><?php echo $row['Access_type']; ?></td>
-                <td><?php echo $row['Status']; ?></td>
+                <td style="text-align: center;">
+                  <span class="status <?php echo strtolower($row['Status']); ?>">
+                    <?php echo $row['Status']; ?>
+                  </span>
+                </td>
               </tr>
         <?php endwhile; ?>
           <?php else: ?>
@@ -118,10 +122,22 @@ function loadLogs() {
       document.querySelector('tbody').innerHTML = html;
     });
 }
+function refreshDashboard() {
+  fetch('fetch_dashboard.php') // or 'fetch_dashboard.php' depending on filename
+    .then(response => response.json())
+    .then(data => {
+      document.getElementById('totalroom').textContent = data.totalroom;
+      document.getElementById('totalusers').textContent = data.totalusers;
+      document.getElementById('totaloccupied').textContent = data.totaloccupied;
+      document.getElementById('totalUnoccupied').textContent = data.totalUnoccupied;
+    })
+    .catch(error => console.error('Error refreshing dashboard:', error));
+}
 
-// Load logs every 5 seconds
 setInterval(loadLogs, 3000);
 window.onload = loadLogs;
+setInterval(refreshDashboard, 3000);
+refreshDashboard();
 </script>
 </body>
 </html>

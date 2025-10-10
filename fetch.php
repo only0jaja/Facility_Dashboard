@@ -17,6 +17,10 @@ while($row = $log_id->fetch_assoc()): ?>
   <td><?= $row['Room_code']; ?></td>
   <td><?= $row['Access_time']; ?></td>
   <td><?= $row['Access_type']; ?></td>
-  <td><?= $row['Status']; ?></td>
+  <td style="text-align: center;">
+    <span class="status <?php echo strtolower($row['Status']); ?>">
+      <?php echo $row['Status']; ?>
+    </span>
+  </td>
 </tr>
 <?php endwhile; ?>
