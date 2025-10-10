@@ -21,7 +21,7 @@ include 'conn.php';
     <a href="rooms.php">📁 Rooms</a>
     <a href="access_logs.php">📜 Access Logs</a>
     <a href="schedule.php">⚙️ Schedule</a>
-    <a href="logout.php">🚪 Log out</a>
+    <a href="logout.php"> Log out</a>
     <div class="user">
       👤 <span>Juan<br><small>Faculty Member</small></span>
     </div>
