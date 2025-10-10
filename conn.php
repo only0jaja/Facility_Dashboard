@@ -2,7 +2,7 @@
 $servername = "localhost";
 $username = "root";
 $password = "";
-$dbname = "facility_Control_v2";
+$dbname = "facility_management";
 
 // Create connection
 $conn = new mysqli($servername, $username, $password, $dbname);
