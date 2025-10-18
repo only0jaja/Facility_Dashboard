@@ -59,6 +59,9 @@ body {
 .sidebar .user span {
     margin-left: 10px;
 }
+.fa-solid {
+    margin-right: 8px;
+}
 
 .schedule {
     margin-top: 50px;

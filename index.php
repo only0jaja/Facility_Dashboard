@@ -8,30 +8,33 @@ include 'conn.php';
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Room Dashboard</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles/index.css">
+    <!-- Font Style -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <!-- Font Awesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"/>
+    <!-- Page Style -->
+    <link rel="stylesheet" href="styles/index.css">
 </head>
 <body>
 
   <!-- Sidebar -->
   <div class="sidebar" id="sidebar">
     <h1>Dashboard</h1>
-    <a href="#" class="active">🏠 Home</a>
-    <a href="users.php">👥 Users</a>
-    <a href="rooms.php">📁 Rooms</a>
-    <a href="access_logs.php">📜 Access Logs</a>
-    <a href="schedule.php">⚙️ Schedule</a>
-    <a href="logout.php"> Log out</a>
+    <a href="" class="active"><i class="fa-solid fa-house"></i> Home</a>
+    <a href="users.php"><i class="fa-solid fa-users"></i> Users</a>
+    <a href="rooms.php"><i class="fa-solid fa-door-closed"></i> Rooms</a>
+    <a href="access_logs.php"><i class="fa-solid fa-clipboard-list"></i> Access Logs</a>
+    <a href="schedule.php"><i class="fa-solid fa-calendar-days"></i> Schedule</a>
+    <a href="logout.php"><i class="fa-solid fa-right-from-bracket"></i> Log out</a>
     <div class="user">
-      👤 <span>Juan<br><small>Faculty Member</small></span>
+      👤 <span>Admin<br><small>Faculty Member</small></span>
     </div>
   </div>
 
   <!-- Main Content -->
   <div class="main">
     <div class="header">
-      <span class="menu-toggle" onclick="toggleMenu()">☰</span>
-      <h2>Hello Juan👋🏼</h2>
+      <h2>Hello Admin!!</h2>
       <input type="search" placeholder="Search..." />
     </div>
      <?php    
@@ -60,7 +63,7 @@ include 'conn.php';
     </div>
 
     <div class="table-section">
-      <h3>Room Availability</h3>
+      <h3>Recent Access</h3>
       <table>
         <thead>
           <tr>

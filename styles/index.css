@@ -59,6 +59,9 @@
     .sidebar .user span {
       margin-left: 10px;
     }
+    .fa-solid {
+    margin-right: 8px;
+  }
 
     /* Main Content */
     .main {

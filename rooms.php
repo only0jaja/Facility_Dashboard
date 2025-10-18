@@ -4,26 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
-     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-     <!-- Font Awesome CDN -->
-<link
-  rel="stylesheet"
-  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
-/>
-
-  <link rel="stylesheet" href="styles/rooms.css">
+    <!-- Font Style -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <!-- Font Awesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"/>
+    <!-- Page Style -->
+    <link rel="stylesheet" href="styles/rooms.css">
 </head>
 <body>
-     <div class="sidebar" id="sidebar">
+  <div class="sidebar" id="sidebar">
     <h1>Dashboard</h1>
-    <a href="index.php" >🏠 Home</a>
-    <a href="users.php">👥 Users</a>
-    <a href=""class="active">📁 Rooms</a>
-    <a href="access_logs.php">📜 Access Logs</a>
+    <a href="index.php"><i class="fa-solid fa-house"></i> Home</a>
+    <a href="users.php"><i class="fa-solid fa-users"></i> Users</a>
+    <a href="" class="active"><i class="fa-solid fa-door-closed"></i> Rooms</a>
+    <a href="access_logs.php"><i class="fa-solid fa-clipboard-list"></i> Access Logs</a>
     <a href="schedule.php"><i class="fa-solid fa-calendar-days"></i> Schedule</a>
-    <a href="logout.php">🚪 Log out</a>
+    <a href="logout.php"><i class="fa-solid fa-right-from-bracket"></i> Log out</a>
     <div class="user">
-      👤 <span>Juan<br><small>Faculty Member</small></span>
+      👤 <span>Admin<br><small>Faculty Member</small></span>
     </div>
   </div>
 
@@ -67,8 +65,8 @@
       <h4><?php echo $row['Room_code']; ?></h4>
       <span class="status <?php echo $statusClass; ?>"><?php echo $row['Status']; ?></span>
     </div>
-    <p>👥 Capacity: <?php echo $row['capacity']; ?></p>
-    <p>🏫 Type: <?php echo $row['classroom_type']; ?></p>
+    <p>👥 Capacity: <?php echo $row['Capacity']; ?></p>
+    <p>🏫 Type: <?php echo $row['Classroom_type']; ?></p>
    
     <div class="card-actions">
       <button class="edit">Edit</button>

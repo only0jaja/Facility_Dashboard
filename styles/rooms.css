@@ -58,6 +58,9 @@ body {
 .sidebar .user span {
     margin-left: 10x;
 }
+.fa-solid {
+    margin-right: 8px;
+}
 /* rooms */
 .room-section{
     padding: 30px 30px 0 300px;
@@ -212,5 +215,4 @@ header {
   background: #007bff;
   color: white;
 }
-
 
