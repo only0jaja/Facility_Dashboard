@@ -11,7 +11,7 @@
 #define RELAY_DOOR 6   // 🚪 Door relay
 #define RED_LED 7      // 🔴 Red LED (denied)
 
-#define ROOM_ID 1      // ⚙️ Change this per Arduino (e.g., 1=ROOM101, 2=ROOM102)
+#define ROOM_ID 1      // ⚙️(e.g., 1=ROOM101, 2=ROOM102)
 
 MFRC522 rfid(SS_PIN, RST_PIN);
 
@@ -113,7 +113,7 @@ void denyAccess() {
   digitalWrite(RED_LED, HIGH);
   beep(3, 150);
 
-  // Flash door relay quickly to indicate denial
+  // Flash door relay 
   for (int i = 0; i < 2; i++) {
     digitalWrite(RELAY_DOOR, LOW);
     delay(150);
