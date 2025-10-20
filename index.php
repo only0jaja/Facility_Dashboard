@@ -10,8 +10,10 @@ include 'conn.php';
   <title>Room Dashboard</title>
     <!-- Font Style -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <!-- Font Awesome CDN -->
+    <!-- Icons Style 1 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"/>
+    <!-- Icons Style 2 -->
+    <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
     <!-- Page Style -->
     <link rel="stylesheet" href="styles/index.css">
 </head>
@@ -19,18 +21,19 @@ include 'conn.php';
 
   <!-- Sidebar -->
   <div class="sidebar" id="sidebar">
-    <h1>Dashboard</h1>
-    <a href="" class="active"><i class="fa-solid fa-house"></i> Home</a>
-    <a href="users.php"><i class="fa-solid fa-users"></i> Users</a>
-    <a href="rooms.php"><i class="fa-solid fa-door-closed"></i> Rooms</a>
-    <a href="access_logs.php"><i class="fa-solid fa-clipboard-list"></i> Access Logs</a>
-    <a href="schedule.php"><i class="fa-solid fa-calendar-days"></i> Schedule</a>
-    <a href="logout.php"><i class="fa-solid fa-right-from-bracket"></i> Log out</a>
-    <div class="user">
-      👤 <span>Admin<br><small>Faculty Member</small></span>
-    </div>
+      <h1>Dashboard</h1>
+      <div class="icons">
+          <a href="index.php" class="active"><i class='bx bxs-home'></i>Home</a>
+          <a href="users.php"><i class='bx bxs-user-pin' ></i> Users</a>
+          <a href="rooms.php"><i class='bx bx-folder-open'></i> Rooms</a>
+          <a href="access_logs.php"><i class='bx bx-bookmark-alt-plus'></i> Access Logs</a>
+          <a href="schedule.php"><i class='bx bx-calendar-week'></i> Schedule</a>
+          <a href="logout.php"><i class='bx bxs-log-out'></i> Log out</a>
+      </div>
+      <div class="user">
+          👤 <span>Juan<br><small>Faculty Member</small></span>
+      </div>
   </div>
-
   <!-- Main Content -->
   <div class="main">
     <div class="header">

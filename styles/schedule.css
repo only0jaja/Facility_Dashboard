@@ -29,7 +29,10 @@ body {
     margin-bottom: 40px;
     color: #FFD700;
 }
-
+.sidebar i{
+    padding: 10px;
+    font-size: 22px;
+}
 .sidebar a {
     color: white;
     text-decoration: none;
@@ -59,17 +62,13 @@ body {
 .sidebar .user span {
     margin-left: 10px;
 }
-.fa-solid {
-    margin-right: 8px;
-}
 
 .schedule {
-    margin-top: 50px;
+    margin-top: 100px;
     margin-left: 270px;
     margin-right: 50px;
-    /* Just enough space to clear the fixed sidebar */
     width: calc(100% - 270px);
-    /* Make sure it uses full remaining width */
+    position: relative;
 }
 
 
@@ -140,14 +139,15 @@ tr {
     border-radius: 8px;
     width: 50%;
     max-width: 550px;
-    /* Slightly reduced from 600px */
     max-height: 85vh;
-    /* Limit height to 85% of viewport */
     overflow-y: auto;
-    /* Add scroll if needed */
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
-
+.modal-btn{
+    position: absolute;
+    top: 30px;
+    right: 40px;
+}
 .modal-header {
     background-color: #0047AB;
     color: white;
@@ -216,7 +216,9 @@ tr {
     cursor: pointer;
     font-size: 14px;
     font-weight: 600;
-    margin-bottom: 20px;
+    margin-bottom: 30px;
+    float: right;
+
     transition: background-color 0.3s ease;
 }
 

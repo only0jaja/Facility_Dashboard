@@ -52,8 +52,9 @@
 .sidebar .user span {
     margin-left: 10px;
 }
-.fa-solid {
-margin-right: 8px;
+.sidebar i{
+    padding: 10px;
+    font-size: 22px;
 }
 
 .header {

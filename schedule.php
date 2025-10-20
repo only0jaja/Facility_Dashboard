@@ -1,69 +1,68 @@
 <?php
-include 'conn.php';
+        include 'conn.php';
 
+        // Fetch schedule data
+        $sql = "
+        SELECT 
+            sub.Code, 
+            sub.Description, 
+            sch.Day, 
+            sch.Start_time, 
+            sch.End_time, 
+            cr.Room_code, 
+            u.F_name, 
+            u.L_name
+        FROM schedule_access AS sa
+        JOIN schedule AS sch ON sa.Schedule_id = sch.Schedule_id
+        JOIN subject AS sub ON sch.Subject_id = sub.Subject_id
+        JOIN users AS u ON sch.Faculty_id = u.User_id
+        JOIN classrooms AS cr ON sch.Room_id = cr.Room_id
+        WHERE sa.CourseSection_id = '1'
+        ORDER BY sch.Day, sch.Start_time
+        ";
 
-// Fetch schedule data
-$sql = "
-SELECT 
-    sub.Code, 
-    sub.Description, 
-    sch.Day, 
-    sch.Start_time, 
-    sch.End_time, 
-    cr.Room_code, 
-    u.F_name, 
-    u.L_name
-FROM schedule_access AS sa
-JOIN schedule AS sch ON sa.Schedule_id = sch.Schedule_id
-JOIN subject AS sub ON sch.Subject_id = sub.Subject_id
-JOIN users AS u ON sch.Faculty_id = u.User_id
-JOIN classrooms AS cr ON sch.Room_id = cr.Room_id
-WHERE sa.CourseSection_id = '1'
-ORDER BY sch.Day, sch.Start_time
-";
+        $result = $conn->query($sql);
 
-$result = $conn->query($sql);
-
-if (isset($_POST['addSchedule'])) {
-    // Get form data
-    $subjectCode = $_POST['subjectCode'];
-    $subjectDescription = $_POST['subjectDescription'];
-    $facultyId = $_POST['faculty'];
-    $roomId = $_POST['room'];
-    $day = $_POST['day'];
-    $startTime = $_POST['startTime'];
-    $endTime = $_POST['endTime'];
-    $courseSectionId = $_POST['courseSection'];
-    
-    // Step 1: Insert into subject table
-    $sql1 = "INSERT INTO subject (Code, Description) VALUES ('$subjectCode', '$subjectDescription')";
-    
-    if ($conn->query($sql1)) {
-        $subjectId = $conn->insert_id;
-        
-        // Step 2: Insert into schedule table
-        $sql2 = "INSERT INTO schedule (Subject_id, Faculty_id, Room_id, Day, Start_time, End_time) 
-                VALUES ('$subjectId', '$facultyId', '$roomId', '$day', '$startTime', '$endTime')";
-        
-        if ($conn->query($sql2)) {
-            $scheduleId = $conn->insert_id;
+        if (isset($_POST['addSchedule'])) {
+            // Get form data
+            $subjectCode = $_POST['subjectCode'];
+            $subjectDescription = $_POST['subjectDescription'];
+            $facultyId = $_POST['faculty'];
+            $roomId = $_POST['room'];
+            $day = $_POST['day'];
+            $startTime = $_POST['startTime'];
+            $endTime = $_POST['endTime'];
+            $courseSectionId = $_POST['courseSection'];
             
-            // Step 3: Insert into schedule_access table
-            $sql3 = "INSERT INTO schedule_access (Schedule_id, CourseSection_id) 
-                    VALUES ('$scheduleId', '$courseSectionId')";
+            // Step 1: Insert into subject table
+            $sql1 = "INSERT INTO subject (Code, Description) VALUES ('$subjectCode', '$subjectDescription')";
             
-            if ($conn->query($sql3)) {
-                echo "<script>alert('Schedule added successfully!'); window.location.href='schedule.php';</script>";
+            if ($conn->query($sql1)) {
+                $subjectId = $conn->insert_id;
+                
+                // Step 2: Insert into schedule table
+                $sql2 = "INSERT INTO schedule (Subject_id, Faculty_id, Room_id, Day, Start_time, End_time) 
+                        VALUES ('$subjectId', '$facultyId', '$roomId', '$day', '$startTime', '$endTime')";
+                
+                if ($conn->query($sql2)) {
+                    $scheduleId = $conn->insert_id;
+                    
+                    // Step 3: Insert into schedule_access table
+                    $sql3 = "INSERT INTO schedule_access (Schedule_id, CourseSection_id) 
+                            VALUES ('$scheduleId', '$courseSectionId')";
+                    
+                    if ($conn->query($sql3)) {
+                        echo "<script>alert('Schedule added successfully!'); window.location.href='schedule.php';</script>";
+                    } else {
+                        echo "Error adding schedule access: " . $conn->error;
+                    }
+                } else {
+                    echo "Error adding schedule: " . $conn->error;
+                }
             } else {
-                echo "Error adding schedule access: " . $conn->error;
+                echo "Error adding subject: " . $conn->error;
             }
-        } else {
-            echo "Error adding schedule: " . $conn->error;
         }
-    } else {
-        echo "Error adding subject: " . $conn->error;
-    }
-}
 ?>
 
 <!DOCTYPE html>
@@ -75,40 +74,48 @@ if (isset($_POST['addSchedule'])) {
     <title>Document</title>
     <!-- Font Style -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <!-- Font Awesome CDN -->
+    <!-- Icons Style 1 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"/>
+    <!-- Icons Style 2 -->
+    <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
     <!-- Page Style -->
     <link rel="stylesheet" href="styles/schedule.css">
+
+
 </head>
 
 <body>
     <div class="sidebar" id="sidebar">
         <h1>Dashboard</h1>
-        <a href="index.php"><i class="fa-solid fa-house"></i> Home</a>
-        <a href="users.php"><i class="fa-solid fa-users"></i> Users</a>
-        <a href="rooms.php" ><i class="fa-solid fa-door-closed"></i> Rooms</a>
-        <a href="access_logs.php"><i class="fa-solid fa-clipboard-list"></i> Access Logs</a>
-        <a href=""class="active"><i class="fa-solid fa-calendar-days"></i> Schedule</a>
-        <a href="logout.php"><i class="fa-solid fa-right-from-bracket"></i> Log out</a>
-        <div class="user">
-            👤 <span>Admin<br><small>Faculty Member</small></span>
+        <div class="icons">
+        <a href="index.php" ><i class='bx bxs-home'></i>Home</a>
+        <a href="users.php"><i class='bx bxs-user-pin' ></i> Users</a>
+        <a href="rooms.php"><i class='bx bx-folder-open'></i> Rooms</a>
+        <a href="access_logs.php"><i class='bx bx-bookmark-alt-plus'></i> Access Logs</a>
+        <a href="schedule.php" class="active"><i class='bx bx-calendar-week'></i> Schedule</a>
+        <a href="logout.php"><i class='bx bxs-log-out'></i> Log out</a>
         </div>
+        <div class="user">
+            👤 <span>Juan<br><small>Faculty Member</small></span>
+        </div>
+    </div>
+    
+    <div class="modal-btn">
+        <button class="btn-primary" onclick="openModal()">+ Add Schedule</button>
     </div>
 
     <div class="schedule">
-        <button class="btn-primary" onclick="openModal()">+ Add Schedule</button>
         <?php
-            // Fetch all course sections that have schedule entries
-            $courseSections = $conn->query("SELECT DISTINCT cs.CourseSection_id, cs.CourseSection 
-                                    FROM course_section cs
-                                    JOIN schedule_access sa ON cs.CourseSection_id = sa.CourseSection_id");
+        // Fetch all course sections that have schedule entries
+        $courseSections = $conn->query("SELECT DISTINCT cs.CourseSection_id, cs.CourseSection 
+                                FROM course_section cs
+                                JOIN schedule_access sa ON cs.CourseSection_id = sa.CourseSection_id");
 
-            if ($courseSections->num_rows > 0) {
-                while ($cs = $courseSections->fetch_assoc()) {
-                    echo "<h2>Schedule for {$cs['CourseSection']}</h2>";
-                    echo "<table>";
-                    echo "
-                    <thead>
+        if ($courseSections->num_rows > 0) {
+            while ($cs = $courseSections->fetch_assoc()) {
+                echo "<h2>Schedule for {$cs['CourseSection']}</h2>";
+                echo "<table>";
+                echo "<thead>
                         <tr>
                             <th>CODE</th>
                             <th>COURSE DESCRIPTION</th>
@@ -120,30 +127,29 @@ if (isset($_POST['addSchedule'])) {
                         </tr>
                     </thead><tbody>";
 
-                    // Fetch schedule for this course section
-                    $sql = "
-                            SELECT 
-                                sub.Code, 
-                                sub.Description, 
-                                sch.Day, 
-                                sch.Start_time, 
-                                sch.End_time, 
-                                cr.Room_code, 
-                                CONCAT(u.F_name, ' ', u.L_name) AS Faculty
-                            FROM schedule_access sa
-                            JOIN schedule sch ON sa.Schedule_id = sch.Schedule_id
-                            JOIN subject sub ON sch.Subject_id = sub.Subject_id
-                            JOIN users u ON sch.Faculty_id = u.User_id
-                            JOIN classrooms cr ON sch.Room_id = cr.Room_id
-                            WHERE sa.CourseSection_id = '{$cs['CourseSection_id']}'
-                            ORDER BY sch.Day, sch.Start_time
-                            ";
+                // Fetch schedule for this course section
+                $sql = "
+                    SELECT 
+                        sub.Code, 
+                        sub.Description, 
+                        sch.Day, 
+                        sch.Start_time, 
+                        sch.End_time, 
+                        cr.Room_code, 
+                        CONCAT(u.F_name, ' ', u.L_name) AS Faculty
+                    FROM schedule_access sa
+                    JOIN schedule sch ON sa.Schedule_id = sch.Schedule_id
+                    JOIN subject sub ON sch.Subject_id = sub.Subject_id
+                    JOIN users u ON sch.Faculty_id = u.User_id
+                    JOIN classrooms cr ON sch.Room_id = cr.Room_id
+                    WHERE sa.CourseSection_id = '{$cs['CourseSection_id']}'
+                    ORDER BY sch.Day, sch.Start_time
+                    ";
 
-                    $result = $conn->query($sql);
-                    if ($result->num_rows > 0) {
-                        while ($row = $result->fetch_assoc()) {
-                            echo "
-                            <tr>
+                $result = $conn->query($sql);
+                if ($result->num_rows > 0) {
+                    while ($row = $result->fetch_assoc()) {
+                        echo "<tr>
                                 <td>{$row['Code']}</td>
                                 <td>{$row['Description']}</td>
                                 <td>{$row['Day']}</td>
@@ -152,17 +158,18 @@ if (isset($_POST['addSchedule'])) {
                                 <td>{$row['Room_code']}</td>
                                 <td>{$row['Faculty']}</td>
                             </tr>";
-                            }
-                    } else {
-                        echo "<tr><td colspan='7'>No schedule found</td></tr>";
                     }
-
-                    echo "</tbody></table><br>";
+                } else {
+                    echo "<tr><td colspan='7'>No schedule found</td></tr>";
                 }
-            } else {
-                echo "No course sections found.";
+
+                echo "</tbody></table><br>";
             }
+        } else {
+            echo "No course sections found.";
+        }
         ?>
+    </div>
 
     <div id="addScheduleModal" class="modal">
         <div class="modal-content">
@@ -170,6 +177,7 @@ if (isset($_POST['addSchedule'])) {
                 <h2>Add New Schedule</h2>
                 <span class="close" onclick="closeModal()">&times;</span>
             </div>
+
             <div class="modal-body">
                 <form method="POST">
                     <div class="form-group">
@@ -188,10 +196,10 @@ if (isset($_POST['addSchedule'])) {
                             <option value="">Select Faculty</option>
                             <?php
                             // Get faculty members from users table
-                            $facultyQuery = $conn->query("SELECT User_id, F_name, L_name FROM users WHERE Role = 'Faculty'");
-                            while ($faculty = $facultyQuery->fetch_assoc()) {
-                                echo "<option value='{$faculty['User_id']}'>{$faculty['F_name']} {$faculty['L_name']}</option>";
-                            }
+                                $facultyQuery = $conn->query("SELECT User_id, F_name, L_name FROM users WHERE Role = 'Faculty'");
+                                while ($faculty = $facultyQuery->fetch_assoc()) {
+                                    echo "<option value='{$faculty['User_id']}'>{$faculty['F_name']} {$faculty['L_name']}</option>";
+                                }
                             ?>
                         </select>
                     </div>
@@ -220,7 +228,6 @@ if (isset($_POST['addSchedule'])) {
                             <option value="Thu">Thursday</option>
                             <option value="Fri">Friday</option>
                             <option value="Sat">Saturday</option>
-                            <option value="Sun">Sunday</option>
                         </select>
                     </div>
 
