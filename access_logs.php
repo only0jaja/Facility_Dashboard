@@ -76,9 +76,11 @@
                 <?php 
                   include 'conn.php';
                   $log_id = $conn->query("
-                    SELECT access_log.*, classrooms.Room_code 
+                    SELECT access_log.*, classrooms.Room_code, Users.Role, Course_section.CourseSection
                     FROM access_log 
                     LEFT JOIN classrooms ON access_log.Room_id = classrooms.Room_id 
+                    LEFT JOIN Users ON access_log.User_id = Users.User_id
+                    LEFT JOIN Course_section ON Course_section.CourseSection_id = Course_section.CourseSection_id
                     ORDER BY Access_time DESC
                   ");
                 ?>
@@ -87,9 +89,9 @@
                   <?php while($row = $log_id->fetch_assoc()): ?>
                     <tr>
                       <td><?php echo htmlspecialchars($row['Log_id']); ?></td>
-                      <td><?php echo htmlspecialchars($row['User_id']); ?></td>
-                      <td><?php echo htmlspecialchars($row['Rfid_tag']); ?></td>
-                      <td><?php echo htmlspecialchars($row['Room_id']); ?></td>
+                      <td><?php echo htmlspecialchars($row['CourseSection']); ?></td>
+                      <td><?php echo htmlspecialchars($row['Role']); ?></td>
+                      <td><?php echo htmlspecialchars($row['Room_code']); ?></td>
                       <td><?= htmlspecialchars($row['Access_time']); ?></td>
                       <td><?= htmlspecialchars($row['Access_type']); ?></td>
                       <td style="text-align: center;">
@@ -148,11 +150,26 @@ function filterTable() {
       }
     }
     
-    // Status filter
+
+    // Status filter 
     if (statusFilter && showRow) {
-      const statusCell = cells[6]; // Status is in the 7th column (index 6)
+      const statusCell = cells[6]; // 7th column
       if (statusCell) {
-        const statusText = statusCell.querySelector('.status').textContent.toLowerCase();
+        // Try multiple ways to get the status text
+        let statusText = '';
+        
+        // Method 1: Get from .status element
+        const statusElement = statusCell.querySelector('.status');
+        if (statusElement) {
+          statusText = statusElement.textContent.toLowerCase().trim();
+        } 
+        // Method 2: Get directly from cell text
+        else {
+          statusText = statusCell.textContent.toLowerCase().trim();
+        }
+        
+        console.log(`Status: "${statusText}", Filter: "${statusFilter}"`); // Debug
+        
         if (statusText !== statusFilter) {
           showRow = false;
         }
