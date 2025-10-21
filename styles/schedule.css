@@ -64,10 +64,6 @@ body {
 }
 
 .schedule {
-    margin-top: 100px;
-    margin-left: 270px;
-    margin-right: 50px;
-    width: calc(100% - 270px);
     position: relative;
 }
 
@@ -144,9 +140,8 @@ tr {
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 .modal-btn{
-    position: absolute;
+    position: static;
     top: 30px;
-    right: 40px;
 }
 .modal-header {
     background-color: #0047AB;
@@ -216,9 +211,6 @@ tr {
     cursor: pointer;
     font-size: 14px;
     font-weight: 600;
-    margin-bottom: 30px;
-    float: right;
-
     transition: background-color 0.3s ease;
 }
 
@@ -230,5 +222,123 @@ tr {
     width: 100%;
     padding: 14px;
     font-size: 16px;
-    margin-top: 10px;
+    margin: 10px 0;
+}
+
+
+.main-content {
+    margin-left: 270px;
+    padding: 20px;
+    width: calc(100% - 270px);
+}
+
+.controls {
+   
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+.controls-section{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 40px;
+}
+.filters {
+    flex-grow: 1;
+    max-width: 800px;
+}
+
+.filter-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.search-box {
+    display: flex;
+    max-width: 500px;
+}
+
+.search-box input {
+    flex-grow: 1;
+    padding: 10px 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px 0 0 5px;
+    font-size: 14px;
+}
+
+.search-box button {
+    background-color: #0047AB;
+    color: white;
+    border: none;
+    border-radius: 0 5px 5px 0;
+    padding: 0 15px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.filter-section{
+    position: relative;
+     margin-bottom: 10px;
+}
+.filter-group {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    position: absolute;
+    top: 0px;
+   
+}
+
+.filter-group select {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+    background-color: white;
+}
+
+.btn-clear {
+    background-color: #6c757d;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.btn-clear:hover {
+    background-color: #5a6268;
+}
+
+.no-results {
+    text-align: center;
+    padding: 40px;
+    color: #6c757d;
+    font-size: 16px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .modal-btn {
+        position: static;
+        margin-bottom: 15px;
+    }
+    
+    .filter-group {
+        flex-direction: column;
+    }
+    
+    .filter-group select {
+        width: 100%;
+    }
 }
