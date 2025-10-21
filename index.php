@@ -1,5 +1,12 @@
 <?php
 include 'conn.php';
+session_start();
+
+$user = $_SESSION['id'];
+if (!isset($user)) {
+    header('Location: login.php');
+    exit();
+}
 ?>
 
 <!DOCTYPE html>

@@ -11,25 +11,17 @@ if (isset($_POST["login"])) {
 
 
     if($email =="admin" && $Password == "admin123"){
+        $_SESSION['id'] = $email;
         header("Location: index.php");
-    }
-    
-    $sql = "SELECT * FROM users WHERE email = '$email'";
-    $result = mysqli_query($conn, $sql);
-    $users = mysqli_fetch_array($result, MYSQLI_ASSOC);
 
-    
-    if ($users) {
-        if (password_verify($Password, $users["password"])) {
-            $_SESSION["id"] = $users["id"];
-            header("Location: index.php");
-            die();
-        } else {
-            $passWarning = "Password does not match";
-        }
-    } else {
-        $emailWarning = "email does not exists";
     }
+    else if($email !== "admin"){
+        $emailWarning = "Invalid Username";
+    }
+    else if($Password !== "admin123"){
+        $passWarning = "Incorrect Password";
+    
+}
 }
 ?>
 
@@ -54,8 +46,8 @@ if (isset($_POST["login"])) {
         <div class="form-container">
             <form id="loginForm" action="login.php" method="POST">
                 <div class="form-control">
-                    <label for="email">Email</label>
-                    <input type="text" id="email" name="email" placeholder="Enter your email" required>
+                    <label for="email">Username</label>
+                    <input type="text" id="email" name="email" placeholder="Enter your username" required>
                     <span class="warning"><?php echo $emailWarning; ?></span>
                     <i class="fas fa-envelope"></i>
                 </div>
@@ -78,9 +70,7 @@ if (isset($_POST["login"])) {
             </form>
 
 
-            <div class="switch-form">
-                Don't have an account? <a href="signup.php">Sign up</a>
-            </div>
+          
         </div>
     </div>
 
