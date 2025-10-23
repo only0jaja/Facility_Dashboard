@@ -1,5 +1,5 @@
 <?php
-include 'conn.php'; // your DB connection file
+include '../conn.php'; // your DB connection file
 
 // Example queries
 $totalroom = $conn->query("SELECT COUNT(*) AS total FROM classrooms")->fetch_assoc();

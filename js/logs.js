@@ -131,7 +131,7 @@
 
         // Function to load logs via AJAX
     function loadLogs() {
-        fetch('fetch.php')
+        fetch('ajax/fetch_logs.php')
         .then(response => response.text())
         .then(html => {
         document.getElementById('logsTableBody').innerHTML = html;

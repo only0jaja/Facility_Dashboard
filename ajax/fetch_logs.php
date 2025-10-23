@@ -1,5 +1,5 @@
 <?php
-include 'conn.php';
+include '../conn.php';
   $log_id = $conn->query("
     SELECT 
       access_log.*,

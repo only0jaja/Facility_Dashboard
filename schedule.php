@@ -112,6 +112,8 @@ if (isset($_POST['addSchedule'])) {
     <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
     <!-- Page Style -->
     <link rel="stylesheet" href="styles/schedule.css">
+    <!-- Sidebar Css -->
+    <link rel="stylesheet" href="styles/sidebar.css">
 </head>
 
 <body>
@@ -131,15 +133,13 @@ if (isset($_POST['addSchedule'])) {
     </div>
     
     <div class="main-content">
-          <div class="controls-section">
-            <div class="modal-btn">
-                <button class="btn-primary" onclick="openModal()">+ Add Schedule</button>
+        <div class="controls-section">
+            <h1>Schedule</h1>
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Search by Log ID, User ID, RFID, Room...">
             </div>
-             <div class="search-box">
-                        <input type="text" name="search" placeholder="Search" value="<?php echo htmlspecialchars($search); ?>">
-                        <button type="submit"><i class='bx bx-search'></i></button>
-                    </div>
-             </div>
+        </div>
         <div class="controls">    
             <div class="filters">
                 <form method="GET" class="filter-form">                   
@@ -189,6 +189,9 @@ if (isset($_POST['addSchedule'])) {
                         </select>
                         
                         <button type="button" class="btn-clear" onclick="clearFilters()">Clear Filters</button>
+                        <div class="modal-btn">
+                            <button class="btn-primary" onclick="openModal()">+ Add Schedule</button>
+                        </div>
                     </div>
                     </div>
                 </form>
@@ -338,47 +341,7 @@ if (isset($_POST['addSchedule'])) {
         </div>
     </div>
 
-    <script>
-        // Modal functions
-        function openModal() {
-            document.getElementById('addScheduleModal').style.display = 'block';
-        }
-
-        function closeModal() {
-            document.getElementById('addScheduleModal').style.display = 'none';
-        }
-
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            const modal = document.getElementById('addScheduleModal');
-            if (event.target === modal) {
-                closeModal();
-            }
-        }
-
-        
-        function clearFilters() {
-            window.location.href = 'schedule.php';
-        }
-        // Add this script if you keep separate forms
-document.querySelector('.search-box button').addEventListener('click', function() {
-    const searchValue = document.querySelector('input[name="search"]').value;
-    const filterForm = document.querySelector('.filter-form');
-    
-    // Add search input to filter form
-    let searchInput = filterForm.querySelector('input[name="search"]');
-    if (!searchInput) {
-        searchInput = document.createElement('input');
-        searchInput.type = 'hidden';
-        searchInput.name = 'search';
-        filterForm.appendChild(searchInput);
-    }
-    searchInput.value = searchValue;
-    
-    // Submit the filter form
-    filterForm.submit();
-});
-    </script>
+<script src="js/schedule.js"></script>
 </body>
 
 </html>

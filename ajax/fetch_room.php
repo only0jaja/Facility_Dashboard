@@ -1,5 +1,5 @@
 <?php
-include "conn.php";
+include "../conn.php";
 
 $sql = "SELECT * FROM classrooms";
 $rooms = mysqli_query($conn, $sql);

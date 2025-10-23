@@ -27,14 +27,15 @@
     
     <!-- access logs -->
     <div class="logs-content">
-        <!-- Filter Controls -->
-        <div class="controls">
+        <div class="controls-section">
+            <h1>Access Logs </h1>
             <div class="search-box">
                 <i class="fas fa-search"></i>
                 <input type="text" id="searchInput" placeholder="Search by Log ID, User ID, RFID, Room...">
             </div>
-            
-
+        </div>
+        <!-- Filter Controls -->
+        <div class="controls">
             <div class="filter-controls">
                 <select id="statusFilter">
                     <option value="">All Status</option>
@@ -53,7 +54,7 @@
                 </select>
                 
                 <button id="clearFilters" class="clear-btn">
-                    <i class="fas fa-times"></i> Clear Filters
+                    Clear Filters
                 </button>
 
                 <button id="printBtn" class="print-btn">
