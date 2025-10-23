@@ -136,7 +136,7 @@ if (isset($_POST['addSchedule'])) {
                 <button class="btn-primary" onclick="openModal()">+ Add Schedule</button>
             </div>
              <div class="search-box">
-                        <input type="text" name="search" placeholder="Search by code, description, or faculty..." value="<?php echo htmlspecialchars($search); ?>">
+                        <input type="text" name="search" placeholder="Search" value="<?php echo htmlspecialchars($search); ?>">
                         <button type="submit"><i class='bx bx-search'></i></button>
                     </div>
              </div>
