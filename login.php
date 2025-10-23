@@ -46,19 +46,6 @@ if (isset($_POST["login"])) {
 </head>
 
 <body>
-    <nav>
-        <div class="logo">
-           <a href="homepage.php"><img src="https://th.bing.com/th/id/OIP.lW_QFgbFGyPHNU8DZawY0AHaHa?w=144&h=180&c=7&r=0&o=7&pid=1.7&rm=3" alt=""></a>
-           
-        </div>
-
-
-        <!-- <div class="auth-buttons">
-            <a href="" class="btn btn-signin">Sign In</a>
-            <a href="signup.php" class="btn btn-signup">Sign Up</a>
-        </div> -->
-    </nav>
-
     <div class="container">
         <div class="header">
             <h1><img src="https://th.bing.com/th/id/OIP.lW_QFgbFGyPHNU8DZawY0AHaHa?w=144&h=180&c=7&r=0&o=7&pid=1.7&rm=3" alt=""></i>Lyceum Of Alabang</h1>
@@ -80,20 +67,9 @@ if (isset($_POST["login"])) {
                     <i class="fas fa-eye password-toggle" onclick="togglePassword()"></i>
                 </div>
 
-                <div class="remember-forgot">
-                    <div class="remember">
-                        <input type="checkbox" id="remember">
-                        <label for="remember">Remember me</label>
-                    </div>
-                    <a href="forgotpassword.php" class="forgot-password">Forgot Password?</a>
-                </div>
+               
                 <button type="submit" class="btn" name="login">Login</button>
             </form>
-
-
-            <div class="switch-form">
-                Don't have an account? <a href="signup.php">Sign up</a>
-            </div>
         </div>
     </div>
 
