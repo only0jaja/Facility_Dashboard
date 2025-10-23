@@ -59,18 +59,9 @@ if (isset($_POST["login"])) {
                     <i class="fas fa-eye password-toggle" onclick="togglePassword()"></i>
                 </div>
 
-                <div class="remember-forgot">
-                    <div class="remember">
-                        <input type="checkbox" id="remember">
-                        <label for="remember">Remember me</label>
-                    </div>
-                    <a href="forgotpassword.php" class="forgot-password">Forgot Password?</a>
-                </div>
+               
                 <button type="submit" class="btn" name="login">Login</button>
             </form>
-
-
-          
         </div>
     </div>
 

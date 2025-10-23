@@ -41,6 +41,7 @@ if (!isset($user)) {
           👤 <span>Juan<br><small>Faculty Member</small></span>
       </div>
   </div>
+  
   <!-- Main Content -->
   <div class="main">
     <div class="header">
