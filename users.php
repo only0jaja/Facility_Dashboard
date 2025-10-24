@@ -1,6 +1,6 @@
 <?php
 include 'conn.php';
-
+session_start();
 // Handle form submission for adding user
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_user'])) {
     $rfid_tag = trim($_POST['rfid_tag']);
@@ -136,14 +136,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_user'])) {
             <a href="logout.php"><i class='bx bxs-log-out'></i> Log out</a>
         </div>
         <div class="user">
-            👤 <span>Juan<br><small>Faculty Member</small></span>
+            👤 
+            <span>
+                <?php echo htmlspecialchars($_SESSION['F_name'] ?? 'Unknown'); ?><br>
+                <small><?php echo htmlspecialchars($_SESSION['Role'] ?? 'Guest'); ?></small>
+            </span>
         </div>
     </div>
 
     <!-- user header -->
     <div class="header">
         <div class="controls-section">
-            <h1>Rooms</h1>
+            <h1>Users</h1>
             <div class="search-box">
                 <i class="fas fa-search"></i>
                 <input type="text" id="searchInput" placeholder="Search Name, ID,Course">
@@ -203,7 +207,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_user'])) {
                 <?php 
                     $sql = 'SELECT users.*, course_section.CourseSection 
                             FROM users 
-                            JOIN course_section ON users.courseSection_id = course_section.courseSection_id
+                            LEFT JOIN course_section ON users.courseSection_id = course_section.courseSection_id
                             ORDER BY users.User_id';
                     $users = mysqli_query($conn,$sql);
                 ?>
@@ -214,7 +218,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_user'])) {
                         <td><?php echo htmlspecialchars($row['Rfid_tag']); ?></td>
                         <td><?php echo htmlspecialchars($row['F_name']); ?></td>
                         <td><?php echo htmlspecialchars($row['L_name']); ?></td>
-                        <td><?php echo htmlspecialchars($row['CourseSection']); ?></td>
+                        <td><?php echo htmlspecialchars($row['CourseSection'] ?? 'N/A'); ?></td>
                         <td>
                         <span class="role-<?php echo strtolower($row['Role']); ?>">
                             <?php echo htmlspecialchars($row['Role']); ?>

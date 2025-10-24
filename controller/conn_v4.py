@@ -6,7 +6,7 @@ import time
 
 # ================== DATABASE CLASS ==================
 class Database:
-    def __init__(self, host="localhost", user="root", password="", database="facility_control_v2"):
+    def __init__(self, host="localhost", user="root", password="", database="facility_control_v3"):
         self.conn = mysql.connector.connect(
             host=host, user=user, password=password, database=database
         )
