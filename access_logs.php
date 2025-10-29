@@ -1,3 +1,19 @@
+<?php
+session_start();
+
+// Prevent browser from caching this page
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
+header("Expires: 0");
+
+// Check if user is logged in
+if (!isset($_SESSION['id'])) {
+    header("Location: login.php");
+    exit();
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,21 +26,26 @@
     <link rel="stylesheet" href="styles/logs.css">
 </head>
 <body>
-    <div class="sidebar" id="sidebar">
-        <h1>Dashboard</h1>
-        <div class="icons">
-            <a href="index.php"><i class='bx bxs-home'></i>Home</a>
-            <a href="users.php"><i class='bx bxs-user-pin' ></i> Users</a>
-            <a href="rooms.php"><i class='bx bx-folder-open'></i> Rooms</a>
-            <a href="access_logs.php" class="active"><i class='bx bx-bookmark-alt-plus'></i> Access Logs</a>
-            <a href="schedule.php"><i class='bx bx-calendar-week'></i> Schedule</a>
-            <a href="logout.php"><i class='bx bxs-log-out'></i> Log out</a>
-        </div>
-        <div class="user">
-            👤 <span>Juan<br><small>Faculty Member</small></span>
-        </div>
+   <div class="sidebar" id="sidebar">
+                        <img src="./img/loalogo.png" alt="Lyceum of Alabang Logo" style="width:120px; height:120px; border-radius:50%; object-fit: cover;margin-left: auto; margin-right: auto;">
+
+              <h2 style="text-align: center; font-size: 20px;margin: 15px 0">
+                Lyceum of Alabang
+            </h2>
+            
+            <div class="icons">
+                <a href="index.php"><i class='bx bxs-home'></i>Home</a>
+                <a href="users.php"><i class='bx bxs-user-pin' ></i> Users</a>
+                <a href="rooms.php"><i class='bx bx-folder-open'></i> Rooms</a>
+                <a href="access_logs.php"class="active"><i class='bx bx-bookmark-alt-plus'></i> Access Logs</a>
+                <a href="schedule.php"><i class='bx bx-calendar-week'></i> Schedule</a>
+                <a href="logout.php"><i class='bx bxs-log-out'></i> Log out</a>
+            </div>
+            <div class="user">
+                👤 <span>Juan<br><small>Faculty Member</small></span>
+            </div>
     </div>
-    
+
     <!-- access logs -->
     <div class="logs-content">
         <div class="controls-section">
@@ -172,5 +193,14 @@
         <div id="printSection"></div>
     </div>
 <script src="js/logs.js"></script>
+<script>
+window.addEventListener("pageshow", function (event) {
+  if (event.persisted) {
+    // If Chrome restores the page from back/forward cache, reload it
+    window.location.reload();
+  }
+});
+</script>
+
 </body>
 </html>

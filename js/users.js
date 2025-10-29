@@ -1,163 +1,186 @@
- // Modal functionality
+// Modal functionality
+document.addEventListener('DOMContentLoaded', function() {
+    // Get modals
     const addUserModal = document.getElementById('addUserModal');
     const editStatusModal = document.getElementById('editStatusModal');
     const deleteUserModal = document.getElementById('deleteUserModal');
+    
+    // Get buttons that open modals
     const addUserBtn = document.getElementById('addUserBtn');
-    const closeBtns = document.querySelectorAll('.close');
     const cancelBtn = document.getElementById('cancelBtn');
     const cancelEditBtn = document.getElementById('cancelEditBtn');
     const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
-
-    // Open add user modal
-    addUserBtn.addEventListener('click', function() {
-        addUserModal.style.display = 'block';
+    
+    // Get close buttons
+    const closeButtons = document.querySelectorAll('.close');
+    
+    // Open Add User Modal
+    if (addUserBtn) {
+        addUserBtn.addEventListener('click', function() {
+            addUserModal.style.display = 'block';
+        });
+    }
+    
+    // Close modals when clicking cancel buttons
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function() {
+            addUserModal.style.display = 'none';
+        });
+    }
+    
+    if (cancelEditBtn) {
+        cancelEditBtn.addEventListener('click', function() {
+            editStatusModal.style.display = 'none';
+        });
+    }
+    
+    if (cancelDeleteBtn) {
+        cancelDeleteBtn.addEventListener('click', function() {
+            deleteUserModal.style.display = 'none';
+        });
+    }
+    
+    // Close modals when clicking X
+    closeButtons.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            addUserModal.style.display = 'none';
+            editStatusModal.style.display = 'none';
+            deleteUserModal.style.display = 'none';
+        });
     });
-
-    // Open edit status modal
-    function openEditModal(userId, firstName, lastName, currentStatus) {
-        document.getElementById('edit_user_id').value = userId;
-        document.getElementById('edit_user_name').textContent = firstName + ' ' + lastName;
-        document.getElementById('edit_current_status').textContent = currentStatus;
-        document.getElementById('edit_status').value = currentStatus;
-        editStatusModal.style.display = 'block';
-    }
-
-    // Open delete user modal
-    function openDeleteModal(userId, firstName, lastName) {
-        document.getElementById('delete_user_id').value = userId;
-        document.getElementById('delete_user_name').textContent = firstName + ' ' + lastName;
-        deleteUserModal.style.display = 'block';
-    }
-
-    // Close modals
-    function closeAllModals() {
-        addUserModal.style.display = 'none';
-        editStatusModal.style.display = 'none';
-        deleteUserModal.style.display = 'none';
-    }
-
-    closeBtns.forEach(btn => {
-        btn.addEventListener('click', closeAllModals);
-    });
-
-    cancelBtn.addEventListener('click', closeAllModals);
-    cancelEditBtn.addEventListener('click', closeAllModals);
-    cancelDeleteBtn.addEventListener('click', closeAllModals);
-
-    // Close modal when clicking outside
+    
+    // Close modals when clicking outside
     window.addEventListener('click', function(event) {
-        if (event.target === addUserModal || event.target === editStatusModal || event.target === deleteUserModal) {
-            closeAllModals();
+        if (event.target === addUserModal) {
+            addUserModal.style.display = 'none';
+        }
+        if (event.target === editStatusModal) {
+            editStatusModal.style.display = 'none';
+        }
+        if (event.target === deleteUserModal) {
+            deleteUserModal.style.display = 'none';
         }
     });
+    
+    // Search functionality
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            filterUsers();
+        });
+    }
+    
+    // Filter functionality
+    const roleFilter = document.getElementById('roleFilter');
+    const statusFilter = document.getElementById('statusFilter');
+    const courseFilter = document.getElementById('courseFilter');
+    const clearFilters = document.getElementById('clearFilters');
+    
+    if (roleFilter) {
+        roleFilter.addEventListener('change', filterUsers);
+    }
+    if (statusFilter) {
+        statusFilter.addEventListener('change', filterUsers);
+    }
+    if (courseFilter) {
+        courseFilter.addEventListener('change', filterUsers);
+    }
+    if (clearFilters) {
+        clearFilters.addEventListener('click', function() {
+            if (roleFilter) roleFilter.value = '';
+            if (statusFilter) statusFilter.value = '';
+            if (courseFilter) courseFilter.value = '';
+            if (searchInput) searchInput.value = '';
+            filterUsers();
+        });
+    }
+});
 
-    // Toggle course section based on role selection
-    function toggleCourseSection() {
-        const role = document.getElementById('role').value;
-        const courseSectionGroup = document.getElementById('courseSectionGroup');
+// Filter users based on search and filters
+function filterUsers() {
+    const searchValue = document.getElementById('searchInput').value.toLowerCase();
+    const roleValue = document.getElementById('roleFilter').value;
+    const statusValue = document.getElementById('statusFilter').value;
+    const courseValue = document.getElementById('courseFilter').value;
+    
+    const rows = document.querySelectorAll('#usersTableBody tr');
+    
+    rows.forEach(function(row) {
+        const userId = row.cells[0].textContent.toLowerCase();
+        const rfidTag = row.cells[1].textContent.toLowerCase();
+        const firstName = row.cells[2].textContent.toLowerCase();
+        const lastName = row.cells[3].textContent.toLowerCase();
+        const courseSection = row.cells[4].textContent.toLowerCase();
+        const role = row.cells[5].querySelector('span').textContent;
+        const status = row.cells[6].querySelector('span').textContent;
         
-        if (role === 'Student') {
-            courseSectionGroup.style.display = 'block';
+        const matchesSearch = !searchValue || 
+            userId.includes(searchValue) ||
+            rfidTag.includes(searchValue) ||
+            firstName.includes(searchValue) ||
+            lastName.includes(searchValue) ||
+            courseSection.includes(searchValue);
+            
+        const matchesRole = !roleValue || role === roleValue;
+        const matchesStatus = !statusValue || status === statusValue;
+        const matchesCourse = !courseValue || courseSection.includes(courseValue.toLowerCase());
+        
+        if (matchesSearch && matchesRole && matchesStatus && matchesCourse) {
+            row.style.display = '';
         } else {
-            courseSectionGroup.style.display = 'none';
-            document.getElementById('courseSection_id').value = '';
+            row.style.display = 'none';
         }
-    }
-
-    // Initialize course section visibility
-    document.addEventListener('DOMContentLoaded', function() {
-        toggleCourseSection();
     });
+}
 
-    // Function to filter table rows based on search and filter criteria
-    function filterUsers() {
-        const searchValue = document.getElementById('searchInput').value.toLowerCase();
-        const roleFilter = document.getElementById('roleFilter').value;
-        const statusFilter = document.getElementById('statusFilter').value;
-        const courseFilter = document.getElementById('courseFilter').value;
-        
-        const tableBody = document.getElementById('usersTableBody');
-        const rows = tableBody.getElementsByTagName('tr');
-        
-        let visibleRows = 0;
-        
-        for (let i = 0; i < rows.length; i++) {
-        const cells = rows[i].getElementsByTagName('td');
-        let showRow = true;
-        
-        // Skip the "no users" row if it exists
-        if (cells.length === 1 && cells[0].className === 'no-results') {
-            rows[i].style.display = 'none';
-            continue;
-        }
-        
-        // Search filter - check all cells for matching text
-        if (searchValue) {
-            let rowContainsText = false;
-            for (let j = 0; j < cells.length; j++) {
-            if (cells[j].textContent.toLowerCase().includes(searchValue)) {
-                rowContainsText = true;
-                break;
-            }
-            }
-            if (!rowContainsText) {
-            showRow = false;
-            }
-        }
-        
-        // Role filter
-        if (roleFilter && showRow) {
-            const roleCell = cells[5]; // Role is in the 6th column (index 5)
-            if (roleCell && roleCell.textContent.trim() !== roleFilter) {
-            showRow = false;
-            }
-        }
-        
-        // Status filter
-        if (statusFilter && showRow) {
-            const statusCell = cells[6]; // Status is in the 7th column (index 6)
-            if (statusCell && statusCell.textContent.trim() !== statusFilter) {
-            showRow = false;
-            }
-        }
-        
-        // Course filter
-        if (courseFilter && showRow) {
-            const courseCell = cells[4]; // Course is in the 5th column (index 4)
-            if (courseCell && courseCell.textContent.trim() !== courseFilter) {
-            showRow = false;
-            }
-        }
-        
-        // Show or hide the row
-        rows[i].style.display = showRow ? '' : 'none';
-        if (showRow) visibleRows++;
-        }
-        
-        // Show "no results" message if no rows are visible
-        const existingNoResults = tableBody.querySelector('.no-results');
-        if (existingNoResults) {
-        existingNoResults.parentElement.remove();
-        }
-        
-        if (visibleRows === 0) {
-        const noResultsRow = document.createElement('tr');
-        noResultsRow.innerHTML = '<td colspan="8" class="no-results">No users match your search criteria</td>';
-        tableBody.appendChild(noResultsRow);
-        }
+// Open Edit Modal
+function openEditModal(userId, firstName, lastName, currentStatus) {
+    document.getElementById('edit_user_id').value = userId;
+    document.getElementById('edit_user_name').textContent = firstName + ' ' + lastName;
+    document.getElementById('edit_current_status').textContent = currentStatus;
+    document.getElementById('edit_status').value = currentStatus;
+    document.getElementById('editStatusModal').style.display = 'block';
+}
+
+// Open Delete Modal with faculty restriction
+function openDeleteModal(userId, firstName, lastName, role, status) {
+    // Check if it's a faculty member with active status
+    if (role === 'Faculty' && status === 'Active') {
+        alert('Cannot delete faculty member with Active status. Please set status to Inactive first.');
+        return;
     }
+    
+    // If not faculty or faculty is inactive, proceed with deletion modal
+    document.getElementById('delete_user_id').value = userId;
+    document.getElementById('delete_user_name').textContent = firstName + ' ' + lastName;
+    document.getElementById('delete_user_role').textContent = role;
+    document.getElementById('delete_user_status').textContent = status;
+    
+    // Show warning for faculty members
+    const facultyWarning = document.getElementById('facultyWarning');
+    if (role === 'Faculty') {
+        facultyWarning.style.display = 'block';
+    } else {
+        facultyWarning.style.display = 'none';
+    }
+    
+    document.getElementById('deleteUserModal').style.display = 'block';
+}
 
-    // Event listeners for filtering
-    document.getElementById('searchInput').addEventListener('input', filterUsers);
-    document.getElementById('roleFilter').addEventListener('change', filterUsers);
-    document.getElementById('statusFilter').addEventListener('change', filterUsers);
-    document.getElementById('courseFilter').addEventListener('change', filterUsers);
+// Toggle course section based on role selection
+function toggleCourseSection() {
+    const role = document.getElementById('role').value;
+    const courseSectionGroup = document.getElementById('courseSectionGroup');
+    
+    if (role === 'Student') {
+        courseSectionGroup.style.display = 'block';
+    } else {
+        courseSectionGroup.style.display = 'none';
+    }
+}
 
-    // Clear filters button
-    document.getElementById('clearFilters').addEventListener('click', function() {
-        document.getElementById('searchInput').value = '';
-        document.getElementById('roleFilter').value = '';
-        document.getElementById('statusFilter').value = '';
-        document.getElementById('courseFilter').value = '';
-        filterUsers();
-    });
+// Export functions for global access
+window.filterUsers = filterUsers;
+window.openEditModal = openEditModal;
+window.openDeleteModal = openDeleteModal;
+window.toggleCourseSection = toggleCourseSection;

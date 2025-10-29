@@ -1,10 +1,18 @@
     // Modal functions
         function openModal() {
-            document.getElementById('addScheduleModal').style.display = 'block';
+            const modal = document.getElementById('addScheduleModal');
+            if (modal) {
+                modal.style.display = 'block';
+                document.body.style.overflow = 'hidden'; // Prevent background scrolling
+            }
         }
 
         function closeModal() {
-            document.getElementById('addScheduleModal').style.display = 'none';
+            const modal = document.getElementById('addScheduleModal');
+            if (modal) {
+                modal.style.display = 'none';
+                document.body.style.overflow = ''; // Restore scrolling
+            }
         }
 
         // Close modal when clicking outside

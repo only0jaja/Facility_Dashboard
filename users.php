@@ -1,6 +1,20 @@
 <?php
 include 'conn.php';
+
 session_start();
+
+// Prevent browser from caching this page
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
+header("Expires: 0");
+
+// Check if user is logged in
+if (!isset($_SESSION['id'])) {
+    header("Location: login.php");
+    exit();
+}
+
 // Handle form submission for adding user
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_user'])) {
     $rfid_tag = trim($_POST['rfid_tag']);
@@ -25,16 +39,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_user'])) {
             if (mysqli_stmt_num_rows($check_stmt) > 0) {
                 $error_message = "Error: RFID tag '$rfid_tag' already exists!";
             } else {
-                // Handle CourseSection_id based on role
-                if ($role === 'Student' && !empty($courseSection_id)) {
-                    // Student with course section
-                    $insert_sql = "INSERT INTO users (Rfid_tag, F_name, L_name, CourseSection_id, Role, Status) VALUES (?, ?, ?, ?, ?, ?)";
-                    $insert_stmt = mysqli_prepare($conn, $insert_sql);
-                    if ($insert_stmt) {
-                        mysqli_stmt_bind_param($insert_stmt, "sssiss", $rfid_tag, $f_name, $l_name, $courseSection_id, $role, $status);
+                // Handle CourseSection_id based on role - FIXED: Check if course section is valid for students
+                if ($role === 'Student') {
+                    if (!empty($courseSection_id)) {
+                        // Verify the course section exists
+                        $verify_course_sql = "SELECT CourseSection_id FROM course_section WHERE CourseSection_id = ?";
+                        $verify_course_stmt = mysqli_prepare($conn, $verify_course_sql);
+                        mysqli_stmt_bind_param($verify_course_stmt, "i", $courseSection_id);
+                        mysqli_stmt_execute($verify_course_stmt);
+                        mysqli_stmt_store_result($verify_course_stmt);
+                        
+                        if (mysqli_stmt_num_rows($verify_course_stmt) > 0) {
+                            // Student with valid course section
+                            $insert_sql = "INSERT INTO users (Rfid_tag, F_name, L_name, CourseSection_id, Role, Status) VALUES (?, ?, ?, ?, ?, ?)";
+                            $insert_stmt = mysqli_prepare($conn, $insert_sql);
+                            if ($insert_stmt) {
+                                mysqli_stmt_bind_param($insert_stmt, "sssiss", $rfid_tag, $f_name, $l_name, $courseSection_id, $role, $status);
+                            }
+                        } else {
+                            $error_message = "Error: Invalid course section selected!";
+                            mysqli_stmt_close($verify_course_stmt);
+                            mysqli_stmt_close($check_stmt);
+                            // Don't proceed further
+                            $courseSection_id = null;
+                        }
+                        mysqli_stmt_close($verify_course_stmt);
+                    } else {
+                        $error_message = "Course Section is required for Students!";
                     }
                 } else {
-                    // Faculty/Admin or Student without course section (set to NULL)
+                    // Faculty/Admin - set CourseSection_id to NULL
                     $insert_sql = "INSERT INTO users (Rfid_tag, F_name, L_name, CourseSection_id, Role, Status) VALUES (?, ?, ?, NULL, ?, ?)";
                     $insert_stmt = mysqli_prepare($conn, $insert_sql);
                     if ($insert_stmt) {
@@ -42,17 +76,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_user'])) {
                     }
                 }
                 
-                if ($insert_stmt && mysqli_stmt_execute($insert_stmt)) {
-                    $success_message = "User added successfully!";
-                    // Refresh the page to show the new user
-                    header("Location: users.php");
-                    exit();
-                } else {
-                    $error_message = "Error adding user: " . mysqli_error($conn);
-                }
-                
-                if (isset($insert_stmt)) {
-                    mysqli_stmt_close($insert_stmt);
+                // Only proceed with insertion if no errors
+                if (!isset($error_message)) {
+                    if (isset($insert_stmt) && mysqli_stmt_execute($insert_stmt)) {
+                        $success_message = "User added successfully!";
+                        // Refresh the page to show the new user
+                        header("Location: users.php");
+                        exit();
+                    } else {
+                        $error_message = "Error adding user: " . mysqli_error($conn);
+                    }
+                    
+                    if (isset($insert_stmt)) {
+                        mysqli_stmt_close($insert_stmt);
+                    }
                 }
             }
             mysqli_stmt_close($check_stmt);
@@ -85,23 +122,140 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
     }
 }
 
-// Handle user deletion
+// Handle user deletion with ALL foreign key constraints handled
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_user'])) {
     $user_id = $_POST['user_id'];
     
-    $delete_sql = "DELETE FROM users WHERE User_id = ?";
-    $delete_stmt = mysqli_prepare($conn, $delete_sql);
+    // First, check if the user is a faculty and their status
+    $check_sql = "SELECT Role, Status FROM users WHERE User_id = ?";
+    $check_stmt = mysqli_prepare($conn, $check_sql);
     
-    if ($delete_stmt) {
-        mysqli_stmt_bind_param($delete_stmt, "i", $user_id);
-        if (mysqli_stmt_execute($delete_stmt)) {
-            $success_message = "User deleted successfully!";
-            header("Location: users.php");
-            exit();
+    if ($check_stmt) {
+        mysqli_stmt_bind_param($check_stmt, "i", $user_id);
+        mysqli_stmt_execute($check_stmt);
+        mysqli_stmt_store_result($check_stmt);
+        
+        if (mysqli_stmt_num_rows($check_stmt) > 0) {
+            mysqli_stmt_bind_result($check_stmt, $role, $status);
+            mysqli_stmt_fetch($check_stmt);
+            
+            // After fetching results, free and close the statement to avoid pending result sets
+            // which can cause "Commands out of sync" when executing subsequent queries.
+            mysqli_stmt_free_result($check_stmt);
+            mysqli_stmt_close($check_stmt);
+
+            // Check if user is faculty and active
+            if ($role === 'Faculty' && $status === 'Active') {
+                $error_message = "Cannot delete faculty member with Active status. Please set status to Inactive first.";
+            } else {
+                // Start transaction for safe deletion
+                                mysqli_begin_transaction($conn);
+                                
+                                try {
+                                    // STEP 1: Handle ALL foreign key constraints
+                                    
+                                    // 1A. For faculty members: Delete schedules where they are assigned as faculty
+                                    if ($role === 'Faculty') {
+                                        // First, we need to handle schedule_access constraints for these schedules
+                                        $get_faculty_schedules_sql = "SELECT Schedule_id FROM schedule WHERE Faculty_id = ?";
+                                        $get_faculty_schedules_stmt = mysqli_prepare($conn, $get_faculty_schedules_sql);
+                                        if ($get_faculty_schedules_stmt) {
+                                            mysqli_stmt_bind_param($get_faculty_schedules_stmt, "i", $user_id);
+                                            mysqli_stmt_execute($get_faculty_schedules_stmt);
+                                            mysqli_stmt_bind_result($get_faculty_schedules_stmt, $schedule_id);
+                
+                                            // Collect schedule IDs first to avoid running other statements while a fetch is active
+                                            $scheduleIds = [];
+                                            while (mysqli_stmt_fetch($get_faculty_schedules_stmt)) {
+                                                $scheduleIds[] = $schedule_id;
+                                            }
+                                            mysqli_stmt_close($get_faculty_schedules_stmt);
+                                        }
+                
+                                        // Delete schedule_access entries for collected schedule IDs
+                                        if (!empty($scheduleIds)) {
+                                            $delete_schedule_access_sql = "DELETE FROM schedule_access WHERE Schedule_id = ?";
+                                            $delete_schedule_access_stmt = mysqli_prepare($conn, $delete_schedule_access_sql);
+                                            if ($delete_schedule_access_stmt) {
+                                                foreach ($scheduleIds as $sid) {
+                                                    mysqli_stmt_bind_param($delete_schedule_access_stmt, "i", $sid);
+                                                    if (!mysqli_stmt_execute($delete_schedule_access_stmt)) {
+                                                        throw new Exception("Error deleting schedule_access: " . mysqli_error($conn));
+                                                    }
+                                                }
+                                                mysqli_stmt_close($delete_schedule_access_stmt);
+                                            }
+                                        }
+                
+                                        // Now delete the schedules
+                                        $delete_schedule_sql = "DELETE FROM schedule WHERE Faculty_id = ?";
+                                        $delete_schedule_stmt = mysqli_prepare($conn, $delete_schedule_sql);
+                                        if ($delete_schedule_stmt) {
+                                            mysqli_stmt_bind_param($delete_schedule_stmt, "i", $user_id);
+                                            if (!mysqli_stmt_execute($delete_schedule_stmt)) {
+                                                throw new Exception("Error deleting faculty schedules: " . mysqli_error($conn));
+                                            }
+                                            mysqli_stmt_close($delete_schedule_stmt);
+                                        }
+                                    }
+                                    
+                                    // 1B. For all users: Handle access_log constraints
+                                    $update_log_sql = "UPDATE access_log SET User_id = NULL WHERE User_id = ?";
+                                    $update_log_stmt = mysqli_prepare($conn, $update_log_sql);
+                                    if ($update_log_stmt) {
+                                        mysqli_stmt_bind_param($update_log_stmt, "i", $user_id);
+                                        if (!mysqli_stmt_execute($update_log_stmt)) {
+                                            throw new Exception("Error updating access_log: " . mysqli_error($conn));
+                                        }
+                                        mysqli_stmt_close($update_log_stmt);
+                                    }
+                                    
+                                    // 1C. For students: Handle course_section constraints (if any)
+                                    // This is handled by the foreign key constraint which allows NULL
+                                    
+                                    // STEP 2: Now delete the user
+                                    $delete_sql = "DELETE FROM users WHERE User_id = ?";
+                                    $delete_stmt = mysqli_prepare($conn, $delete_sql);
+                                    
+                                    if ($delete_stmt) {
+                                        mysqli_stmt_bind_param($delete_stmt, "i", $user_id);
+                                        if (mysqli_stmt_execute($delete_stmt)) {
+                                            if (mysqli_stmt_affected_rows($delete_stmt) > 0) {
+                                                mysqli_commit($conn);
+                                                // Close the statement before redirecting
+                                                mysqli_stmt_close($delete_stmt);
+                                                $success_message = "User deleted successfully!";
+                                                header("Location: users.php");
+                                                exit();
+                                            } else {
+                                                throw new Exception("No user found with the specified ID.");
+                                            }
+                                        } else {
+                                            $error_msg = mysqli_error($conn);
+                                            throw new Exception("Error deleting user: " . $error_msg);
+                                        }
+                                    } else {
+                                        throw new Exception("Error preparing delete statement: " . mysqli_error($conn));
+                                    }
+                                } catch (Exception $e) {
+                    mysqli_rollback($conn);
+                    $error_message = $e->getMessage();
+                    
+                    // Provide more user-friendly error messages
+                    if (strpos($e->getMessage(), 'foreign key constraint') !== false) {
+                        if ($role === 'Faculty') {
+                            $error_message = "Cannot delete faculty member. They have complex schedule assignments. Please delete their schedules manually first from the Schedule page.";
+                        } else {
+                            $error_message = "Cannot delete user due to system constraints. Please contact administrator.";
+                        }
+                    }
+                }
+            }
         } else {
-            $error_message = "Error deleting user: " . mysqli_error($conn);
+            $error_message = "User not found!";
         }
-        mysqli_stmt_close($delete_stmt);
+    } else {
+        $error_message = "Error checking user: " . mysqli_error($conn);
     }
 }
 ?>
@@ -125,24 +279,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_user'])) {
 
 </head>
 <body>
-    <div class="sidebar" id="sidebar">
-        <h1>Dashboard</h1>
-        <div class="icons">
-            <a href="index.php" ><i class='bx bxs-home'></i>Home</a>
-            <a href="users.php"class="active"><i class='bx bxs-user-pin' ></i> Users</a>
-            <a href="rooms.php"><i class='bx bx-folder-open'></i> Rooms</a>
-            <a href="access_logs.php"><i class='bx bx-bookmark-alt-plus'></i> Access Logs</a>
-            <a href="schedule.php"><i class='bx bx-calendar-week'></i> Schedule</a>
-            <a href="logout.php"><i class='bx bxs-log-out'></i> Log out</a>
-        </div>
-        <div class="user">
-            👤 
-            <span>
-                <?php echo htmlspecialchars($_SESSION['F_name'] ?? 'Unknown'); ?><br>
-                <small><?php echo htmlspecialchars($_SESSION['Role'] ?? 'Guest'); ?></small>
-            </span>
-        </div>
+   <div class="sidebar" id="sidebar">
+                        <img src="./img/loalogo.png" alt="Lyceum of Alabang Logo" style="width:120px; height:120px; border-radius:50%; object-fit: cover;margin-left: auto; margin-right: auto;">
+
+              <h2 style="text-align: center; font-size: 20px;margin: 15px 0">
+                Lyceum of Alabang
+            </h2>
+            
+            <div class="icons">
+                <a href="index.php" class="active"><i class='bx bxs-home'></i>Home</a>
+                <a href="users.php"><i class='bx bxs-user-pin' ></i> Users</a>
+                <a href="rooms.php"><i class='bx bx-folder-open'></i> Rooms</a>
+                <a href="access_logs.php"><i class='bx bx-bookmark-alt-plus'></i> Access Logs</a>
+                <a href="schedule.php"><i class='bx bx-calendar-week'></i> Schedule</a>
+                <a href="logout.php"><i class='bx bxs-log-out'></i> Log out</a>
+            </div>
+            <div class="user">
+                👤 <span>Juan<br><small>Faculty Member</small></span>
+            </div>
     </div>
+
 
     <!-- user header -->
     <div class="header">
@@ -195,8 +351,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_user'])) {
                 <tr>
                     <th>User_id</th>
                     <th>Rfid_tag</th>
-                    <th>f_name</th>
-                    <th>l_name</th>
+                    <th>Firstname</th>
+                    <th>Lastname</th>
                     <th>CourseSection</th>
                     <th>Role</th>
                     <th>Status</th>
@@ -234,8 +390,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_user'])) {
                             <button class="btn-edit" onclick="openEditModal(<?php echo $row['User_id']; ?>, '<?php echo $row['F_name']; ?>', '<?php echo $row['L_name']; ?>', '<?php echo $row['Status']; ?>')">
                             <i class="fas fa-edit"></i> Edit
                             </button>
-                            <button class="btn-delete" onclick="openDeleteModal(<?php echo $row['User_id']; ?>, '<?php echo $row['F_name']; ?>', '<?php echo $row['L_name']; ?>')">
-                            <i class="fas fa-trash"></i> Delete
+                            <button class="btn-delete" onclick="openDeleteModal(<?php echo $row['User_id']; ?>, '<?php echo $row['F_name']; ?>', '<?php echo $row['L_name']; ?>', '<?php echo $row['Role']; ?>', '<?php echo $row['Status']; ?>')">
+                                <i class="fas fa-trash"></i> Delete
                             </button>
                         </div>
                         </td>
@@ -374,6 +530,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_user'])) {
                 
                 <div class="user-info">
                     <p><strong>User:</strong> <span id="delete_user_name"></span></p>
+                    <p><strong>Role:</strong> <span id="delete_user_role"></span></p>
+                    <p><strong>Status:</strong> <span id="delete_user_status"></span></p>
+                    <div id="facultyWarning" class="alert alert-warning" style="display: none;">
+                        <strong>Warning:</strong> All schedules and related data assigned to this faculty member will be permanently deleted.
+                    </div>
+                    <div id="foreignKeyWarning" class="alert alert-warning" style="display: none;">
+                        <strong>Note:</strong> This user's access logs will be preserved but disassociated from their account.
+                    </div>
                     <p class="alert alert-error">Are you sure you want to delete this user? This action cannot be undone.</p>
                 </div>
                 
@@ -386,6 +550,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_user'])) {
     </div>
 
     <script src="js/users.js"></script>
+    <script>
+    // Enhanced delete modal function with faculty restriction
+    function openDeleteModal(userId, firstName, lastName, role, status) {
+        // Check if it's a faculty member with active status
+        if (role === 'Faculty' && status === 'Active') {
+            alert('Cannot delete faculty member with Active status. Please set status to Inactive first.');
+            return;
+        }
+        
+        // If not faculty or faculty is inactive, proceed with deletion modal
+        document.getElementById('delete_user_id').value = userId;
+        document.getElementById('delete_user_name').textContent = firstName + ' ' + lastName;
+        document.getElementById('delete_user_role').textContent = role;
+        document.getElementById('delete_user_status').textContent = status;
+        
+        // Show appropriate warnings
+        const facultyWarning = document.getElementById('facultyWarning');
+        const foreignKeyWarning = document.getElementById('foreignKeyWarning');
+        
+        if (role === 'Faculty') {
+            facultyWarning.style.display = 'block';
+            foreignKeyWarning.style.display = 'block';
+        } else {
+            facultyWarning.style.display = 'none';
+            foreignKeyWarning.style.display = 'block';
+        }
+        
+        document.getElementById('deleteUserModal').style.display = 'block';
+    }
+
+    // Toggle course section based on role selection
+    function toggleCourseSection() {
+        const role = document.getElementById('role').value;
+        const courseSectionGroup = document.getElementById('courseSectionGroup');
+        
+        if (role === 'Student') {
+            courseSectionGroup.style.display = 'block';
+        } else {
+            courseSectionGroup.style.display = 'none';
+        }
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        toggleCourseSection();
+    });
+
+    window.addEventListener("pageshow", function (event) {
+        if (event.persisted) {
+            window.location.reload();
+        }
+    });
+    </script>
 
 </body>
 </html>

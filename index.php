@@ -2,18 +2,29 @@
 include 'conn.php';
 session_start();
 
-$user = $_SESSION['id'];
-if (!isset($user)) {
-    header('Location: login.php');
+// Prevent browser from caching this page
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
+header("Expires: 0");
+
+// Check if user is logged in
+if (!isset($_SESSION['id'])) {
+    header("Location: login.php");
     exit();
 }
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+
   <title>Room Dashboard</title>
     <!-- Font Style -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
@@ -29,7 +40,12 @@ if (!isset($user)) {
 <body>
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
-            <h1>Dashboard</h1>
+                        <img src="./img/loalogo.png" alt="Lyceum of Alabang Logo" style="width:120px; height:120px; border-radius:50%; object-fit: cover;margin-left: auto; margin-right: auto;">
+
+              <h2 style="text-align: center; font-size: 20px;margin: 15px 0">
+                Lyceum of Alabang
+            </h2>
+            
             <div class="icons">
                 <a href="index.php" class="active"><i class='bx bxs-home'></i>Home</a>
                 <a href="users.php"><i class='bx bxs-user-pin' ></i> Users</a>
@@ -46,8 +62,8 @@ if (!isset($user)) {
     <!-- Main Content -->
     <div class="main">
         <div class="header">
-        <h2>Hello Admin!!</h2>
-        <input type="search" placeholder="Search..." />
+       
+     
         </div>
             <?php    
                 $totalroom = $conn->query("SELECT COUNT(*) AS total FROM classrooms")->fetch_assoc();
@@ -130,6 +146,15 @@ if (!isset($user)) {
     </div>
 
 <script src="js/index.js"></script>
+<script>
+window.addEventListener("pageshow", function (event) {
+  if (event.persisted) {
+    // If Chrome restores the page from back/forward cache, reload it
+    window.location.reload();
+  }
+});
+</script>
+
 
 </body>
 </html>

@@ -213,7 +213,7 @@ table {
 
 th, td {
     padding: 14px 16px;
-    text-align: left;
+    text-align: center;
     border-bottom: 1px solid #e9ecef;
     font-size: 14px;
 }
@@ -225,6 +225,7 @@ th {
     position: sticky;
     top: 0;
     z-index: 10;
+    text-align: center;
 }
 
 tbody tr:hover {

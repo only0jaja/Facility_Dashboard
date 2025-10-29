@@ -2,6 +2,19 @@
 session_start();
 include "conn.php";
 
+
+// If already logged in, go to dashboard
+if (isset($_SESSION['id'])) {
+    header('Location: index.php');
+    exit();
+}
+
+// Prevent browser from caching this page
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Cache-Control: post-check=0, pre-check=0", false);
+header("Pragma: no-cache");
+
+
 $emailWarning = "";
 $passWarning = "";
 
@@ -80,7 +93,14 @@ if (isset($_POST["login"])) {
                 eyeIcon.classList.add('fa-eye');
             }
         }
-    </script>
+       
+  // Disable back navigation
+  history.pushState(null, null, location.href);
+  window.onpopstate = function () {
+      history.pushState(null, null, location.href);
+  };
+</script>
+
 </body>
 
 </html>
