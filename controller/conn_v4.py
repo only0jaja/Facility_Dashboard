@@ -57,20 +57,21 @@ class AccessControl:
                 SELECT Schedule_id, Room_id
                 FROM schedule
                 WHERE Faculty_id = %s
-                AND Room_id = %s
                 AND Day = %s
                 AND %s BETWEEN Start_time AND End_time
-            """, (user_id, room_id, current_day, current_time), fetchone=True)
-        else:  # Student check — must be in same room
+                AND Room_id = %s
+            """, (user_id, current_day, current_time, room_id), fetchone=True)
+        else:  # Student: check schedule via schedule_access
             schedule = self.db.query("""
                 SELECT s.Schedule_id, s.Room_id
                 FROM schedule s
                 JOIN schedule_access sa ON sa.Schedule_id = s.Schedule_id
                 WHERE sa.CourseSection_id = %s
-                AND s.Room_id = %s
                 AND s.Day = %s
                 AND %s BETWEEN s.Start_time AND s.End_time
-            """, (user["CourseSection_id"], room_id, current_day, current_time), fetchone=True)
+                AND s.Room_id = %s
+            """, (user["CourseSection_id"], current_day, current_time, room_id), fetchone=True)
+
 
         if schedule:
             return user_id, schedule["Schedule_id"], "granted"
