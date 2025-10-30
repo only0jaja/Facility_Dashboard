@@ -1,6 +1,5 @@
 <?php
 include 'conn.php';
-
 session_start();
 
 // Prevent browser from caching this page
@@ -14,6 +13,9 @@ if (!isset($_SESSION['id'])) {
     header("Location: login.php");
     exit();
 }
+
+// Get current tab from URL or default to students
+$current_tab = isset($_GET['tab']) ? $_GET['tab'] : 'students';
 
 // Handle form submission for adding user
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_user'])) {
@@ -39,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_user'])) {
             if (mysqli_stmt_num_rows($check_stmt) > 0) {
                 $error_message = "Error: RFID tag '$rfid_tag' already exists!";
             } else {
-                // Handle CourseSection_id based on role - FIXED: Check if course section is valid for students
+                // Handle CourseSection_id based on role
                 if ($role === 'Student') {
                     if (!empty($courseSection_id)) {
                         // Verify the course section exists
@@ -60,7 +62,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_user'])) {
                             $error_message = "Error: Invalid course section selected!";
                             mysqli_stmt_close($verify_course_stmt);
                             mysqli_stmt_close($check_stmt);
-                            // Don't proceed further
                             $courseSection_id = null;
                         }
                         mysqli_stmt_close($verify_course_stmt);
@@ -80,8 +81,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_user'])) {
                 if (!isset($error_message)) {
                     if (isset($insert_stmt) && mysqli_stmt_execute($insert_stmt)) {
                         $success_message = "User added successfully!";
-                        // Refresh the page to show the new user
-                        header("Location: users.php");
+                        // Redirect to appropriate tab
+                        $redirect_tab = ($role === 'Student') ? 'students' : 'faculty';
+                        header("Location: users.php?tab=$redirect_tab");
                         exit();
                     } else {
                         $error_message = "Error adding user: " . mysqli_error($conn);
@@ -113,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
         mysqli_stmt_bind_param($update_stmt, "si", $status, $user_id);
         if (mysqli_stmt_execute($update_stmt)) {
             $success_message = "User status updated successfully!";
-            header("Location: users.php");
+            header("Location: users.php?tab=$current_tab");
             exit();
         } else {
             $error_message = "Error updating user status: " . mysqli_error($conn);
@@ -122,7 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
     }
 }
 
-// Handle user deletion with ALL foreign key constraints handled
+// Handle user deletion
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_user'])) {
     $user_id = $_POST['user_id'];
     
@@ -139,8 +141,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_user'])) {
             mysqli_stmt_bind_result($check_stmt, $role, $status);
             mysqli_stmt_fetch($check_stmt);
             
-            // After fetching results, free and close the statement to avoid pending result sets
-            // which can cause "Commands out of sync" when executing subsequent queries.
             mysqli_stmt_free_result($check_stmt);
             mysqli_stmt_close($check_stmt);
 
@@ -149,99 +149,90 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_user'])) {
                 $error_message = "Cannot delete faculty member with Active status. Please set status to Inactive first.";
             } else {
                 // Start transaction for safe deletion
-                                mysqli_begin_transaction($conn);
-                                
-                                try {
-                                    // STEP 1: Handle ALL foreign key constraints
-                                    
-                                    // 1A. For faculty members: Delete schedules where they are assigned as faculty
-                                    if ($role === 'Faculty') {
-                                        // First, we need to handle schedule_access constraints for these schedules
-                                        $get_faculty_schedules_sql = "SELECT Schedule_id FROM schedule WHERE Faculty_id = ?";
-                                        $get_faculty_schedules_stmt = mysqli_prepare($conn, $get_faculty_schedules_sql);
-                                        if ($get_faculty_schedules_stmt) {
-                                            mysqli_stmt_bind_param($get_faculty_schedules_stmt, "i", $user_id);
-                                            mysqli_stmt_execute($get_faculty_schedules_stmt);
-                                            mysqli_stmt_bind_result($get_faculty_schedules_stmt, $schedule_id);
+                mysqli_begin_transaction($conn);
                 
-                                            // Collect schedule IDs first to avoid running other statements while a fetch is active
-                                            $scheduleIds = [];
-                                            while (mysqli_stmt_fetch($get_faculty_schedules_stmt)) {
-                                                $scheduleIds[] = $schedule_id;
-                                            }
-                                            mysqli_stmt_close($get_faculty_schedules_stmt);
-                                        }
-                
-                                        // Delete schedule_access entries for collected schedule IDs
-                                        if (!empty($scheduleIds)) {
-                                            $delete_schedule_access_sql = "DELETE FROM schedule_access WHERE Schedule_id = ?";
-                                            $delete_schedule_access_stmt = mysqli_prepare($conn, $delete_schedule_access_sql);
-                                            if ($delete_schedule_access_stmt) {
-                                                foreach ($scheduleIds as $sid) {
-                                                    mysqli_stmt_bind_param($delete_schedule_access_stmt, "i", $sid);
-                                                    if (!mysqli_stmt_execute($delete_schedule_access_stmt)) {
-                                                        throw new Exception("Error deleting schedule_access: " . mysqli_error($conn));
-                                                    }
-                                                }
-                                                mysqli_stmt_close($delete_schedule_access_stmt);
-                                            }
-                                        }
-                
-                                        // Now delete the schedules
-                                        $delete_schedule_sql = "DELETE FROM schedule WHERE Faculty_id = ?";
-                                        $delete_schedule_stmt = mysqli_prepare($conn, $delete_schedule_sql);
-                                        if ($delete_schedule_stmt) {
-                                            mysqli_stmt_bind_param($delete_schedule_stmt, "i", $user_id);
-                                            if (!mysqli_stmt_execute($delete_schedule_stmt)) {
-                                                throw new Exception("Error deleting faculty schedules: " . mysqli_error($conn));
-                                            }
-                                            mysqli_stmt_close($delete_schedule_stmt);
-                                        }
+                try {
+                    // Handle ALL foreign key constraints
+                    if ($role === 'Faculty') {
+                        $get_faculty_schedules_sql = "SELECT Schedule_id FROM schedule WHERE Faculty_id = ?";
+                        $get_faculty_schedules_stmt = mysqli_prepare($conn, $get_faculty_schedules_sql);
+                        if ($get_faculty_schedules_stmt) {
+                            mysqli_stmt_bind_param($get_faculty_schedules_stmt, "i", $user_id);
+                            mysqli_stmt_execute($get_faculty_schedules_stmt);
+                            mysqli_stmt_bind_result($get_faculty_schedules_stmt, $schedule_id);
+
+                            $scheduleIds = [];
+                            while (mysqli_stmt_fetch($get_faculty_schedules_stmt)) {
+                                $scheduleIds[] = $schedule_id;
+                            }
+                            mysqli_stmt_close($get_faculty_schedules_stmt);
+                        }
+
+                        // Delete schedule_access entries
+                        if (!empty($scheduleIds)) {
+                            $delete_schedule_access_sql = "DELETE FROM schedule_access WHERE Schedule_id = ?";
+                            $delete_schedule_access_stmt = mysqli_prepare($conn, $delete_schedule_access_sql);
+                            if ($delete_schedule_access_stmt) {
+                                foreach ($scheduleIds as $sid) {
+                                    mysqli_stmt_bind_param($delete_schedule_access_stmt, "i", $sid);
+                                    if (!mysqli_stmt_execute($delete_schedule_access_stmt)) {
+                                        throw new Exception("Error deleting schedule_access: " . mysqli_error($conn));
                                     }
-                                    
-                                    // 1B. For all users: Handle access_log constraints
-                                    $update_log_sql = "UPDATE access_log SET User_id = NULL WHERE User_id = ?";
-                                    $update_log_stmt = mysqli_prepare($conn, $update_log_sql);
-                                    if ($update_log_stmt) {
-                                        mysqli_stmt_bind_param($update_log_stmt, "i", $user_id);
-                                        if (!mysqli_stmt_execute($update_log_stmt)) {
-                                            throw new Exception("Error updating access_log: " . mysqli_error($conn));
-                                        }
-                                        mysqli_stmt_close($update_log_stmt);
-                                    }
-                                    
-                                    // 1C. For students: Handle course_section constraints (if any)
-                                    // This is handled by the foreign key constraint which allows NULL
-                                    
-                                    // STEP 2: Now delete the user
-                                    $delete_sql = "DELETE FROM users WHERE User_id = ?";
-                                    $delete_stmt = mysqli_prepare($conn, $delete_sql);
-                                    
-                                    if ($delete_stmt) {
-                                        mysqli_stmt_bind_param($delete_stmt, "i", $user_id);
-                                        if (mysqli_stmt_execute($delete_stmt)) {
-                                            if (mysqli_stmt_affected_rows($delete_stmt) > 0) {
-                                                mysqli_commit($conn);
-                                                // Close the statement before redirecting
-                                                mysqli_stmt_close($delete_stmt);
-                                                $success_message = "User deleted successfully!";
-                                                header("Location: users.php");
-                                                exit();
-                                            } else {
-                                                throw new Exception("No user found with the specified ID.");
-                                            }
-                                        } else {
-                                            $error_msg = mysqli_error($conn);
-                                            throw new Exception("Error deleting user: " . $error_msg);
-                                        }
-                                    } else {
-                                        throw new Exception("Error preparing delete statement: " . mysqli_error($conn));
-                                    }
-                                } catch (Exception $e) {
+                                }
+                                mysqli_stmt_close($delete_schedule_access_stmt);
+                            }
+                        }
+
+                        // Delete schedules
+                        $delete_schedule_sql = "DELETE FROM schedule WHERE Faculty_id = ?";
+                        $delete_schedule_stmt = mysqli_prepare($conn, $delete_schedule_sql);
+                        if ($delete_schedule_stmt) {
+                            mysqli_stmt_bind_param($delete_schedule_stmt, "i", $user_id);
+                            if (!mysqli_stmt_execute($delete_schedule_stmt)) {
+                                throw new Exception("Error deleting faculty schedules: " . mysqli_error($conn));
+                            }
+                            mysqli_stmt_close($delete_schedule_stmt);
+                        }
+                    }
+                    
+                    // Handle access_log constraints
+                    $update_log_sql = "UPDATE access_log SET User_id = NULL WHERE User_id = ?";
+                    $update_log_stmt = mysqli_prepare($conn, $update_log_sql);
+                    if ($update_log_stmt) {
+                        mysqli_stmt_bind_param($update_log_stmt, "i", $user_id);
+                        if (!mysqli_stmt_execute($update_log_stmt)) {
+                            throw new Exception("Error updating access_log: " . mysqli_error($conn));
+                        }
+                        mysqli_stmt_close($update_log_stmt);
+                    }
+                    
+                    // Delete the user
+                    $delete_sql = "DELETE FROM users WHERE User_id = ?";
+                    $delete_stmt = mysqli_prepare($conn, $delete_sql);
+                    
+                    if ($delete_stmt) {
+                        mysqli_stmt_bind_param($delete_stmt, "i", $user_id);
+                        if (mysqli_stmt_execute($delete_stmt)) {
+                            if (mysqli_stmt_affected_rows($delete_stmt) > 0) {
+                                mysqli_commit($conn);
+                                mysqli_stmt_close($delete_stmt);
+                                $success_message = "User deleted successfully!";
+                                header("Location: users.php?tab=$current_tab");
+                                exit();
+                            } else {
+                                throw new Exception("No user found with the specified ID.");
+                            }
+                        } else {
+                            $error_msg = mysqli_error($conn);
+                            throw new Exception("Error deleting user: " . $error_msg);
+                        }
+                    } else {
+                        throw new Exception("Error preparing delete statement: " . mysqli_error($conn));
+                    }
+                } catch (Exception $e) {
                     mysqli_rollback($conn);
                     $error_message = $e->getMessage();
                     
-                    // Provide more user-friendly error messages
                     if (strpos($e->getMessage(), 'foreign key constraint') !== false) {
                         if ($role === 'Faculty') {
                             $error_message = "Cannot delete faculty member. They have complex schedule assignments. Please delete their schedules manually first from the Schedule page.";
@@ -258,6 +249,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_user'])) {
         $error_message = "Error checking user: " . mysqli_error($conn);
     }
 }
+
+// Get statistics for dashboard
+$student_count = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as count FROM users WHERE Role = 'Student' AND Status = 'Active'"))['count'];
+$faculty_count = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as count FROM users WHERE Role = 'Faculty' AND Status = 'Active'"))['count'];
+$inactive_count = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as count FROM users WHERE Status = 'Inactive'"))['count'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -276,134 +272,292 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_user'])) {
     <link rel="stylesheet" href="styles/users.css">
     <!-- Sidebar Css -->
     <link rel="stylesheet" href="styles/sidebar.css">
-
 </head>
 <body>
    <div class="sidebar" id="sidebar">
-                        <img src="./img/loalogo.png" alt="Lyceum of Alabang Logo" style="width:120px; height:120px; border-radius:50%; object-fit: cover;margin-left: auto; margin-right: auto;">
+        <img src="./img/loalogo.png" alt="Lyceum of Alabang Logo" style="width:120px; height:120px; border-radius:50%; object-fit: cover;margin-left: auto; margin-right: auto;">
+        <h2 style="text-align: center; font-size: 20px;margin: 15px 0">Lyceum of Alabang</h2>
+        
+        <div class="icons">
+            <a href="index.php" class="active"><i class='bx bxs-home'></i>Home</a>
+            <a href="users.php" class="active"><i class='bx bxs-user-pin' ></i> Users</a>
+            <a href="rooms.php"><i class='bx bx-folder-open'></i> Rooms</a>
+            <a href="access_logs.php"><i class='bx bx-bookmark-alt-plus'></i> Access Logs</a>
+            <a href="schedule.php"><i class='bx bx-calendar-week'></i> Schedule</a>
+            <a href="logout.php"><i class='bx bxs-log-out'></i> Log out</a>
+        </div>
+        <div class="user">
+            👤 <span>Juan<br><small>Faculty Member</small></span>
+        </div>
+    </div>
 
-              <h2 style="text-align: center; font-size: 20px;margin: 15px 0">
-                Lyceum of Alabang
-            </h2>
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Statistics Dashboard -->
+        <div class="dashboard-stats">
+            <div class="stat-card student-stat">
+                <div class="stat-icon">
+                    <i class="fas fa-user-graduate"></i>
+                </div>
+                <div class="stat-info">
+                    <h3><?php echo $student_count; ?></h3>
+                    <p>Active Students</p>
+                </div>
+            </div>
+            <div class="stat-card faculty-stat">
+                <div class="stat-icon">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                </div>
+                <div class="stat-info">
+                    <h3><?php echo $faculty_count; ?></h3>
+                    <p>Active Faculty</p>
+                </div>
+            </div>
+            <div class="stat-card inactive-stat">
+                <div class="stat-icon">
+                    <i class="fas fa-user-slash"></i>
+                </div>
+                <div class="stat-info">
+                    <h3><?php echo $inactive_count; ?></h3>
+                    <p>Inactive Users</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Header Section -->
+        <div class="header">
+            <div class="controls-section">
+                <h1>User Management</h1>
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchInput" placeholder="Search Name, ID, Course...">
+                </div>
+            </div>
             
-            <div class="icons">
-                <a href="index.php" class="active"><i class='bx bxs-home'></i>Home</a>
-                <a href="users.php"><i class='bx bxs-user-pin' ></i> Users</a>
-                <a href="rooms.php"><i class='bx bx-folder-open'></i> Rooms</a>
-                <a href="access_logs.php"><i class='bx bx-bookmark-alt-plus'></i> Access Logs</a>
-                <a href="schedule.php"><i class='bx bx-calendar-week'></i> Schedule</a>
-                <a href="logout.php"><i class='bx bxs-log-out'></i> Log out</a>
+            <!-- Tab Navigation -->
+            <div class="tab-navigation">
+                <button class="tab-btn <?php echo $current_tab === 'students' ? 'active' : ''; ?>" data-tab="students">
+                    <i class="fas fa-user-graduate"></i>
+                    Students
+                    <span class="tab-badge"><?php echo $student_count; ?></span>
+                </button>
+                <button class="tab-btn <?php echo $current_tab === 'faculty' ? 'active' : ''; ?>" data-tab="faculty">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                    Faculty
+                    <span class="tab-badge"><?php echo $faculty_count; ?></span>
+                </button>
+                <button class="tab-btn <?php echo $current_tab === 'all' ? 'active' : ''; ?>" data-tab="all">
+                    <i class="fas fa-users"></i>
+                    All Users
+                    <span class="tab-badge"><?php echo $student_count + $faculty_count + $inactive_count; ?></span>
+                </button>
             </div>
-            <div class="user">
-                👤 <span>Juan<br><small>Faculty Member</small></span>
-            </div>
-    </div>
 
-
-    <!-- user header -->
-    <div class="header">
-        <div class="controls-section">
-            <h1>Users</h1>
-            <div class="search-box">
-                <i class="fas fa-search"></i>
-                <input type="text" id="searchInput" placeholder="Search Name, ID,Course">
+            <div class="search-container">
+                <div class="filter-controls">
+                    <?php if ($current_tab === 'students' || $current_tab === 'all'): ?>
+                    <select id="courseFilter">
+                        <option value="">All Courses</option>
+                        <?php
+                        $courseSql = "SELECT DISTINCT CourseSection FROM course_section ORDER BY CourseSection";
+                        $courseResult = mysqli_query($conn, $courseSql);
+                        while($course = mysqli_fetch_assoc($courseResult)) {
+                            echo '<option value="' . htmlspecialchars($course['CourseSection']) . '">' . htmlspecialchars($course['CourseSection']) . '</option>';
+                        }
+                        ?>
+                    </select>
+                    <?php endif; ?>
+                    
+                    <select id="statusFilter">
+                        <option value="">All Status</option>
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                    </select>
+                    
+                    <button class="clear-filters" id="clearFilters">
+                        <i class="fas fa-times"></i> Clear Filters
+                    </button>
+                    <button class="add-user-btn" id="addUserBtn">
+                        <i class="fas fa-plus"></i> Add User
+                    </button>
+                </div>
             </div>
         </div>
-        <div class="search-container">
-            <div class="filter-controls">
-            <select id="roleFilter">
-                <option value="">All Roles</option>
-                <option value="Student">Student</option>
-                <option value="Faculty">Faculty</option>
-                <option value="Admin">Admin</option>
-            </select>
-            <select id="statusFilter">
-                <option value="">All Status</option>
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-            </select>
-            <select id="courseFilter">
-                <option value="">All Courses</option>
-                <?php
-                $courseSql = "SELECT DISTINCT CourseSection FROM course_section ORDER BY CourseSection";
-                $courseResult = mysqli_query($conn, $courseSql);
-                while($course = mysqli_fetch_assoc($courseResult)) {
-                    echo '<option value="' . htmlspecialchars($course['CourseSection']) . '">' . htmlspecialchars($course['CourseSection']) . '</option>';
-                }
-                ?>
-            </select>
-            <button class="clear-filters" id="clearFilters">
-                Clear Filters
-            </button>
-            <button class="add-user-btn" id="addUserBtn">
-                <i class="fas fa-plus"></i> Add User
-            </button>
-            </div>
-        </div>
-    </div>
 
-    <!-- user table -->
-    <div class="user-table">
-        <div class="table-section">
-            <div class="table-scroll">
-            <table id="usersTable">
-                <thead>
-                <tr>
-                    <th>User_id</th>
-                    <th>Rfid_tag</th>
-                    <th>Firstname</th>
-                    <th>Lastname</th>
-                    <th>CourseSection</th>
-                    <th>Role</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-                </thead>
-                <tbody id="usersTableBody">
-                <?php 
-                    $sql = 'SELECT users.*, course_section.CourseSection 
-                            FROM users 
-                            LEFT JOIN course_section ON users.courseSection_id = course_section.courseSection_id
-                            ORDER BY users.User_id';
-                    $users = mysqli_query($conn,$sql);
-                ?>
-                <?php if(mysqli_num_rows($users) > 0): ?>
-                    <?php while($row = mysqli_fetch_assoc($users)): ?>
-                    <tr>
-                        <td><?php echo htmlspecialchars($row['User_id']); ?></td>
-                        <td><?php echo htmlspecialchars($row['Rfid_tag']); ?></td>
-                        <td><?php echo htmlspecialchars($row['F_name']); ?></td>
-                        <td><?php echo htmlspecialchars($row['L_name']); ?></td>
-                        <td><?php echo htmlspecialchars($row['CourseSection'] ?? 'N/A'); ?></td>
-                        <td>
-                        <span class="role-<?php echo strtolower($row['Role']); ?>">
-                            <?php echo htmlspecialchars($row['Role']); ?>
-                        </span>
-                        </td>
-                        <td>
-                        <span class="status-<?php echo strtolower($row['Status']); ?>">
-                            <?php echo htmlspecialchars($row['Status']); ?>
-                        </span>
-                        </td>
-                        <td>
-                        <div class="action-buttons">
-                            <button class="btn-edit" onclick="openEditModal(<?php echo $row['User_id']; ?>, '<?php echo $row['F_name']; ?>', '<?php echo $row['L_name']; ?>', '<?php echo $row['Status']; ?>')">
-                            <i class="fas fa-edit"></i> Edit
-                            </button>
-                            <button class="btn-delete" onclick="openDeleteModal(<?php echo $row['User_id']; ?>, '<?php echo $row['F_name']; ?>', '<?php echo $row['L_name']; ?>', '<?php echo $row['Role']; ?>', '<?php echo $row['Status']; ?>')">
-                                <i class="fas fa-trash"></i> Delete
-                            </button>
-                        </div>
-                        </td>
-                    </tr>
-                    <?php endwhile; ?>
-                <?php else: ?>
-                    <tr>
-                    <td colspan="8" class="no-results">No users found</td>
-                    </tr>
-                <?php endif; ?>
-                </tbody>
-            </table>
+        <!-- User Tables -->
+        <div class="user-table">
+            <div class="table-section">
+                <div class="table-scroll">
+                    <!-- Students Table -->
+                    <div class="tab-content <?php echo $current_tab === 'students' ? 'active' : ''; ?>" id="students-tab">
+                        <table id="studentsTable">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>RFID Tag</th>
+                                    <th>First Name</th>
+                                    <th>Last Name</th>
+                                    <th>Course Section</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="studentsTableBody">
+                                <?php 
+                                $student_sql = "SELECT users.*, course_section.CourseSection 
+                                                FROM users 
+                                                LEFT JOIN course_section ON users.courseSection_id = course_section.courseSection_id
+                                                WHERE users.Role = 'Student'
+                                                ORDER BY users.User_id";
+                                $students = mysqli_query($conn, $student_sql);
+                                ?>
+                                <?php if(mysqli_num_rows($students) > 0): ?>
+                                    <?php while($row = mysqli_fetch_assoc($students)): ?>
+                                    <tr>
+                                        <td><?php echo htmlspecialchars($row['User_id']); ?></td>
+                                        <td><?php echo htmlspecialchars($row['Rfid_tag']); ?></td>
+                                        <td><?php echo htmlspecialchars($row['F_name']); ?></td>
+                                        <td><?php echo htmlspecialchars($row['L_name']); ?></td>
+                                        <td><?php echo htmlspecialchars($row['CourseSection'] ?? 'N/A'); ?></td>
+                                        <td>
+                                            <span class="status-<?php echo strtolower($row['Status']); ?>">
+                                                <?php echo htmlspecialchars($row['Status']); ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="action-buttons">
+                                                <button class="btn-edit" onclick="openEditModal(<?php echo $row['User_id']; ?>, '<?php echo $row['F_name']; ?>', '<?php echo $row['L_name']; ?>', '<?php echo $row['Status']; ?>')">
+                                                    <i class="fas fa-edit"></i> Edit
+                                                </button>
+                                                <button class="btn-delete" onclick="openDeleteModal(<?php echo $row['User_id']; ?>, '<?php echo $row['F_name']; ?>', '<?php echo $row['L_name']; ?>', 'Student', '<?php echo $row['Status']; ?>')">
+                                                    <i class="fas fa-trash"></i> Delete
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <?php endwhile; ?>
+                                <?php else: ?>
+                                    <tr>
+                                        <td colspan="7" class="no-results">No students found</td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Faculty Table -->
+                    <div class="tab-content <?php echo $current_tab === 'faculty' ? 'active' : ''; ?>" id="faculty-tab">
+                        <table id="facultyTable">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>RFID Tag</th>
+                                    <th>First Name</th>
+                                    <th>Last Name</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="facultyTableBody">
+                                <?php 
+                                $faculty_sql = "SELECT * FROM users WHERE Role = 'Faculty' ORDER BY User_id";
+                                $faculty = mysqli_query($conn, $faculty_sql);
+                                ?>
+                                <?php if(mysqli_num_rows($faculty) > 0): ?>
+                                    <?php while($row = mysqli_fetch_assoc($faculty)): ?>
+                                    <tr>
+                                        <td><?php echo htmlspecialchars($row['User_id']); ?></td>
+                                        <td><?php echo htmlspecialchars($row['Rfid_tag']); ?></td>
+                                        <td><?php echo htmlspecialchars($row['F_name']); ?></td>
+                                        <td><?php echo htmlspecialchars($row['L_name']); ?></td>
+                                        <td>
+                                            <span class="status-<?php echo strtolower($row['Status']); ?>">
+                                                <?php echo htmlspecialchars($row['Status']); ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="action-buttons">
+                                                <button class="btn-edit" onclick="openEditModal(<?php echo $row['User_id']; ?>, '<?php echo $row['F_name']; ?>', '<?php echo $row['L_name']; ?>', '<?php echo $row['Status']; ?>')">
+                                                    <i class="fas fa-edit"></i> Edit
+                                                </button>
+                                                <button class="btn-delete" onclick="openDeleteModal(<?php echo $row['User_id']; ?>, '<?php echo $row['F_name']; ?>', '<?php echo $row['L_name']; ?>', 'Faculty', '<?php echo $row['Status']; ?>')">
+                                                    <i class="fas fa-trash"></i> Delete
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <?php endwhile; ?>
+                                <?php else: ?>
+                                    <tr>
+                                        <td colspan="6" class="no-results">No faculty members found</td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- All Users Table -->
+                    <div class="tab-content <?php echo $current_tab === 'all' ? 'active' : ''; ?>" id="all-tab">
+                        <table id="allUsersTable">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>RFID Tag</th>
+                                    <th>First Name</th>
+                                    <th>Last Name</th>
+                                    <th>Course Section</th>
+                                    <th>Role</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="allUsersTableBody">
+                                <?php 
+                                $all_sql = "SELECT users.*, course_section.CourseSection 
+                                            FROM users 
+                                            LEFT JOIN course_section ON users.courseSection_id = course_section.courseSection_id
+                                            ORDER BY users.Role, users.User_id";
+                                $all_users = mysqli_query($conn, $all_sql);
+                                ?>
+                                <?php if(mysqli_num_rows($all_users) > 0): ?>
+                                    <?php while($row = mysqli_fetch_assoc($all_users)): ?>
+                                    <tr>
+                                        <td><?php echo htmlspecialchars($row['User_id']); ?></td>
+                                        <td><?php echo htmlspecialchars($row['Rfid_tag']); ?></td>
+                                        <td><?php echo htmlspecialchars($row['F_name']); ?></td>
+                                        <td><?php echo htmlspecialchars($row['L_name']); ?></td>
+                                        <td><?php echo htmlspecialchars($row['CourseSection'] ?? 'N/A'); ?></td>
+                                        <td>
+                                            <span class="role-<?php echo strtolower($row['Role']); ?>">
+                                                <?php echo htmlspecialchars($row['Role']); ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="status-<?php echo strtolower($row['Status']); ?>">
+                                                <?php echo htmlspecialchars($row['Status']); ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="action-buttons">
+                                                <button class="btn-edit" onclick="openEditModal(<?php echo $row['User_id']; ?>, '<?php echo $row['F_name']; ?>', '<?php echo $row['L_name']; ?>', '<?php echo $row['Status']; ?>')">
+                                                    <i class="fas fa-edit"></i> Edit
+                                                </button>
+                                                <button class="btn-delete" onclick="openDeleteModal(<?php echo $row['User_id']; ?>, '<?php echo $row['F_name']; ?>', '<?php echo $row['L_name']; ?>', '<?php echo $row['Role']; ?>', '<?php echo $row['Status']; ?>')">
+                                                    <i class="fas fa-trash"></i> Delete
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <?php endwhile; ?>
+                                <?php else: ?>
+                                    <tr>
+                                        <td colspan="8" class="no-results">No users found</td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -592,8 +746,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_user'])) {
         }
     }
 
-    // Initialize on page load
+    // Tab functionality
     document.addEventListener('DOMContentLoaded', function() {
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        
+        tabButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const tabName = this.getAttribute('data-tab');
+                window.location.href = `users.php?tab=${tabName}`;
+            });
+        });
+        
         toggleCourseSection();
     });
 
