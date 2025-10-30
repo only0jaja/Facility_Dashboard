@@ -81,8 +81,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_room'])) {
     header("Location: rooms.php");
     exit();
 }
-?>
 
+// Handle room deletion
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_room'])) {
+    include "conn.php";
+    
+    $roomId = $_POST['room_id'];
+    
+    // Check if room exists and get room code for message
+    $check_sql = "SELECT Room_code FROM classrooms WHERE Room_id = ?";
+    $check_stmt = $conn->prepare($check_sql);
+    $check_stmt->bind_param("i", $roomId);
+    $check_stmt->execute();
+    $check_stmt->store_result();
+    
+    if ($check_stmt->num_rows > 0) {
+        $check_stmt->bind_result($roomCode);
+        $check_stmt->fetch();
+        
+        // Check if room is used in any schedule
+        $schedule_check_sql = "SELECT COUNT(*) FROM schedule WHERE Room_id = ?";
+        $schedule_check_stmt = $conn->prepare($schedule_check_sql);
+        $schedule_check_stmt->bind_param("i", $roomId);
+        $schedule_check_stmt->execute();
+        $schedule_check_stmt->bind_result($schedule_count);
+        $schedule_check_stmt->fetch();
+        $schedule_check_stmt->close();
+        
+        if ($schedule_count > 0) {
+            $_SESSION['error_message'] = "Cannot delete room '$roomCode' because it is assigned to existing schedules!";
+        } else {
+            // Delete the room
+            $delete_sql = "DELETE FROM classrooms WHERE Room_id = ?";
+            $delete_stmt = $conn->prepare($delete_sql);
+            
+            if ($delete_stmt) {
+                $delete_stmt->bind_param("i", $roomId);
+                
+                if ($delete_stmt->execute()) {
+                    $_SESSION['success_message'] = "Room '$roomCode' deleted successfully!";
+                } else {
+                    $_SESSION['error_message'] = "Error deleting room: " . $delete_stmt->error;
+                }
+                
+                $delete_stmt->close();
+            } else {
+                $_SESSION['error_message'] = "Database error: " . $conn->error;
+            }
+        }
+    } else {
+        $_SESSION['error_message'] = "Room not found!";
+    }
+    
+    $check_stmt->close();
+    $conn->close();
+    
+    // Redirect to prevent form resubmission
+    header("Location: rooms.php");
+    exit();
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -97,348 +155,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_room'])) {
     <link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
     <!-- Sidebar Css -->
     <link rel="stylesheet" href="styles/sidebar.css">
-    
-    <style>
-        /* General Styles */
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Inter', sans-serif;
-        }
-
-        body {
-            background-color: #f5f7fa;
-            min-height: 100vh;
-        }
-
-        .room-section{
-            padding: 30px 30px 0 300px;
-        }
-        .room-content{
-            padding-top: 25px;
-        }
-
-        /* Search Box */
-        .search-box {
-            position: relative;
-            min-width: 300px;
-        }
-
-        .search-box i {
-            position: absolute;
-            left: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #666;
-            z-index: 1;
-        }
-
-        .search-box input {
-            width: 100%;
-            padding: 12px 15px 12px 45px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 14px;
-            transition: all 0.3s;
-            background: #f8f9fa;
-        }
-
-        .search-box input:focus {
-            outline: none;
-            border-color: #0047AB;
-            background: white;
-            box-shadow: 0 0 0 3px rgba(0, 71, 171, 0.1);
-        }
-
-        .controls-section {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 70px;
-            background: white;
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-        }
-
-        .controls-section h1{
-            width: 198px;
-        }
-
-        /* Filters Section */
-        .filters {
-            border-radius: 12px;
-            padding: 25px;
-        }
-
-        .filter-buttons {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-
-        .filter {
-            padding: 12px 24px;
-            border: 2px solid #e1e5e9;
-            border-radius: 8px;
-            background: white;
-            color: #495057;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .filter:hover {
-            border-color: #0047AB;
-            color: #0047AB;
-        }
-
-        .filter.active {
-            background: #0047AB;
-            color: white;
-            border-color: #0047AB;
-        }
-
-        .actions {
-            display: flex;
-            gap: 12px;
-            margin-left: auto;
-        }
-
-        .add-room {
-            background: #28a745;
-            color: white;
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .add-room:hover {
-            background: #218838;
-        }
-
-        /* Room Grid */
-        .room-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(400px, 3fr));
-            gap: 20px;
-            margin-top: 30px;
-        }
-
-        .room-card {
-            background: white;
-            border-radius: 10px;
-            padding: 15px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.05);
-            border-left: 5px solid #ccc;
-        }
-
-        .room-card.available {
-            border-color: #00c896;
-        }
-
-        .room-card.occupied {
-            border-color: #f0ad4e;
-        }
-
-        .room-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .status {
-            font-size: 12px;
-            padding: 4px 8px;
-            border-radius: 12px;
-            color: white;
-        }
-
-        .status.available {
-            background-color: #00c896;
-        }
-
-        .status.occupied {
-            background-color: #e40959;
-        }
-
-        .card-actions {
-            margin-top: 10px;
-        }
-
-        .card-actions button {
-            margin-right: 10px;
-            padding: 6px 12px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        .edit {
-            background: #17a2b8;
-            color: white;
-        }
-
-        .no-rooms-message {
-            grid-column: 1 / -1;
-            text-align: center;
-            padding: 40px;
-            color: #6c757d;
-            font-style: italic;
-            background: white;
-            border-radius: 10px;
-            margin-top: 20px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.05);
-        }
-
-        /* Messages */
-        .alert-message {
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 8px;
-            font-weight: 500;
-        }
-
-        .alert-success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .alert-error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        /* Modal Styles */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-        }
-
-        .modal-content {
-            background: white;
-            border-radius: 12px;
-            width: 90%;
-            max-width: 500px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px 25px;
-            border-bottom: 1px solid #eee;
-        }
-
-        .modal-header h2 {
-            margin: 0;
-            color: #2c3e50;
-            font-size: 1.5rem;
-            font-weight: 600;
-        }
-
-        .close-modal {
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: #6c757d;
-        }
-
-        .close-modal:hover {
-            color: #dc3545;
-        }
-
-        .modal-content form {
-            padding: 25px;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: #495057;
-        }
-
-        .form-group input,
-        .form-group select {
-            width: 100%;
-            padding: 12px 15px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 14px;
-            background: #f8f9fa;
-        }
-
-        .form-group input:focus,
-        .form-group select:focus {
-            outline: none;
-            border-color: #0047AB;
-            background: white;
-            box-shadow: 0 0 0 3px rgba(0, 71, 171, 0.1);
-        }
-
-        .form-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 12px;
-            margin-top: 25px;
-            padding-top: 20px;
-            border-top: 1px solid #eee;
-        }
-
-        .cancel-btn,
-        .submit-btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .cancel-btn {
-            background: #6c757d;
-            color: white;
-        }
-
-        .cancel-btn:hover {
-            background: #5a6268;
-        }
-
-        .submit-btn {
-            background: #0047AB;
-            color: white;
-        }
-
-        .submit-btn:hover {
-            background: #003d99;
-        }
-    </style>
+    <!-- Rooms CSS -->
+    <link rel="stylesheet" href="styles/rooms.css">
 </head>
 
 <body>
@@ -473,7 +191,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_room'])) {
         <div class="room-content">
             <!-- Display Messages -->
             <?php if (isset($_SESSION['success_message'])): ?>
-                <div class="alert-message alert-success">
+                <div class="alert-message alert-success" id="successMessage">
                     <?php 
                     echo $_SESSION['success_message']; 
                     unset($_SESSION['success_message']);
@@ -482,7 +200,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_room'])) {
             <?php endif; ?>
 
             <?php if (isset($_SESSION['error_message'])): ?>
-                <div class="alert-message alert-error">
+                <div class="alert-message alert-error" id="errorMessage">
                     <?php 
                     echo $_SESSION['error_message']; 
                     unset($_SESSION['error_message']);
@@ -520,6 +238,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_room'])) {
                         $statusClass = ($status == 'occupied') ? 'occupied' : 'available';
                 ?>
                     <div class="room-card <?php echo $statusClass; ?>" 
+                         data-room-id="<?php echo $row['Room_id']; ?>"
                          data-room-code="<?php echo $row['Room_code']; ?>" 
                          data-room-type="<?php echo $row['Classroom_type']; ?>" 
                          data-status="<?php echo $statusClass; ?>">
@@ -527,11 +246,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_room'])) {
                             <h4><?php echo $row['Room_code']; ?></h4>
                             <span class="status <?php echo $statusClass; ?>"><?php echo $row['Status']; ?></span>
                         </div>
-                        <p>👥 Capacity: <?php echo $row['Capacity']; ?></p>
-                        <p>🏫 Type: <?php echo $row['Classroom_type']; ?></p>
-                    
+                        <div class="room-details">
+                            <p>👥 Capacity: <?php echo $row['Capacity']; ?></p>
+                            <p>🏫 Type: <?php echo $row['Classroom_type']; ?></p>
+                        </div>
                         <div class="card-actions">
-                            <button class="edit">Edit</button>
+                            <button class="delete" onclick="openDeleteModal(<?php echo $row['Room_id']; ?>, '<?php echo $row['Room_code']; ?>')">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
                         </div>
                     </div>
                 <?php 
@@ -594,131 +316,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_room'])) {
         </div>
     </div>
 
+    <!-- Delete Room Modal -->
+    <div class="modal-overlay delete-modal" id="deleteRoomModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Delete Room</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <form id="deleteRoomForm" method="POST">
+                <input type="hidden" name="delete_room" value="1">
+                <input type="hidden" id="delete_room_id" name="room_id">
+                
+                <div class="delete-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Warning:</strong> This action cannot be undone.
+                </div>
+                
+                <div style="padding: 0 25px;">
+                    <p>Are you sure you want to delete room <strong id="delete_room_name"></strong>?</p>
+                </div>
+                
+                <div class="delete-actions">
+                    <button type="button" class="cancel-btn">Cancel</button>
+                    <button type="submit" class="submit-btn delete-confirm">Delete Room</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- JavaScript -->
-    <script>
-        // Wait for the page to load
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Page loaded - initializing scripts');
-            
-            // Modal functionality
-            const addRoomBtn = document.getElementById('addRoomBtn');
-            const addRoomModal = document.getElementById('addRoomModal');
-            const closeModalBtn = document.querySelector('.close-modal');
-            const cancelBtn = document.querySelector('.cancel-btn');
-            const addRoomForm = document.getElementById('addRoomForm');
-            
-            // Open modal
-            if (addRoomBtn) {
-                addRoomBtn.addEventListener('click', function() {
-                    console.log('Add Room button clicked');
-                    addRoomModal.style.display = 'flex';
-                });
-            }
-            
-            // Close modal functions
-            function closeModal() {
-                addRoomModal.style.display = 'none';
-            }
-            
-            if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
-            if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
-            
-            // Close modal when clicking outside
-            addRoomModal.addEventListener('click', function(event) {
-                if (event.target === addRoomModal) {
-                    closeModal();
-                }
-            });
-            
-            // Form validation (optional - form will submit to PHP regardless)
-            if (addRoomForm) {
-                addRoomForm.addEventListener('submit', function(event) {
-                    const roomCode = document.getElementById('roomCode').value;
-                    const capacity = document.getElementById('capacity').value;
-                    const roomType = document.getElementById('roomType').value;
-                    
-                    if (!roomCode || !capacity || !roomType) {
-                        alert('Please fill in all required fields');
-                        event.preventDefault();
-                        return;
-                    }
-                    
-                    console.log('Form submitted with values:', {
-                        roomCode: roomCode,
-                        capacity: capacity,
-                        roomType: roomType,
-                        status: document.getElementById('status').value
-                    });
-                });
-            }
-
-            // Initialize filter functionality
-            initializeFilters();
-        });
-
-        // Filter functionality
-        function initializeFilters() {
-            const searchInput = document.getElementById('searchInput');
-            const filterButtons = document.querySelectorAll('.filter');
-            const roomGrid = document.getElementById('roomGrid');
-            
-            if (!searchInput || !roomGrid) return;
-            
-            const originalRoomCards = Array.from(roomGrid.querySelectorAll('.room-card'));
-            
-            function filterRooms() {
-                const activeFilter = document.querySelector('.filter.active').getAttribute('data-filter');
-                const searchTerm = searchInput.value.toLowerCase().trim();
-                
-                roomGrid.innerHTML = '';
-                
-                let hasVisibleRooms = false;
-                
-                originalRoomCards.forEach(card => {
-                    const roomCode = card.getAttribute('data-room-code').toLowerCase();
-                    const roomType = card.getAttribute('data-room-type').toLowerCase();
-                    const status = card.getAttribute('data-status');
-                    
-                    let matchesFilter = true;
-                    if (activeFilter !== 'all') {
-                        matchesFilter = status === activeFilter;
-                    }
-                    
-                    const matchesSearch = !searchTerm || 
-                                         roomCode.includes(searchTerm) || 
-                                         roomType.includes(searchTerm);
-                    
-                    if (matchesFilter && matchesSearch) {
-                        roomGrid.appendChild(card.cloneNode(true));
-                        hasVisibleRooms = true;
-                    }
-                });
-                
-                if (!hasVisibleRooms) {
-                    const message = document.createElement('div');
-                    message.className = 'no-rooms-message';
-                    message.textContent = 'No rooms match your search criteria.';
-                    roomGrid.appendChild(message);
-                }
-            }
-            
-            filterButtons.forEach(button => {
-                button.addEventListener('click', function() {
-                    filterButtons.forEach(btn => btn.classList.remove('active'));
-                    this.classList.add('active');
-                    filterRooms();
-                });
-            });
-            
-            searchInput.addEventListener('input', filterRooms);
-        }
-
-        // Page refresh for back/forward cache
-        window.addEventListener("pageshow", function (event) {
-            if (event.persisted) {
-                window.location.reload();
-            }
-        });
-    </script>
+    <script src="js/rooms.js"></script>
 </body>
 </html>
