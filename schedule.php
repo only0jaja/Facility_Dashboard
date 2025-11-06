@@ -84,23 +84,35 @@ if (isset($_POST['addSchedule'])) {
     $endTime = $_POST['endTime'];
     $courseSectionId = $_POST['courseSection'];
     
-    // Step 1: Insert into subject table
-    $sql1 = "INSERT INTO subject (Code, Description) VALUES ('$subjectCode', '$subjectDescription')";
-    
-    if ($conn->query($sql1)) {
-        $subjectId = $conn->insert_id;
+        /// Step 1: Check if subject already exists
+        $checkSubject = $conn->query("SELECT Subject_id FROM subject WHERE Code = '$subjectCode'");
+
+        if ($checkSubject->num_rows > 0) {
+            // Use existing subject
+            $subjectRow = $checkSubject->fetch_assoc();
+            $subjectId = $subjectRow['Subject_id'];
+        } else {
+            // Create new subject if it doesn't exist
+            $sql1 = "INSERT INTO subject (Code, Description) VALUES ('$subjectCode', '$subjectDescription')";
+            if ($conn->query($sql1)) {
+                $subjectId = $conn->insert_id;
+            } else {
+                echo "Error adding subject: " . $conn->error;
+                exit();
+            }
+        }
         
         // Step 2: Insert into schedule table
-        $sql2 = "INSERT INTO schedule (Subject_id, Faculty_id, Room_id, Day, Start_time, End_time) 
+        $sql2 = "INSERT INTO schedule (Subject_id, Faculty_id, Room_id, Day, Start_time, End_time)
                 VALUES ('$subjectId', '$facultyId', '$roomId', '$day', '$startTime', '$endTime')";
-        
+
         if ($conn->query($sql2)) {
             $scheduleId = $conn->insert_id;
-            
+
             // Step 3: Insert into schedule_access table
-            $sql3 = "INSERT INTO schedule_access (Schedule_id, CourseSection_id) 
+            $sql3 = "INSERT INTO schedule_access (Schedule_id, CourseSection_id)
                     VALUES ('$scheduleId', '$courseSectionId')";
-            
+
             if ($conn->query($sql3)) {
                 echo "<script>alert('Schedule added successfully!'); window.location.href='schedule.php';</script>";
             } else {
@@ -109,10 +121,7 @@ if (isset($_POST['addSchedule'])) {
         } else {
             echo "Error adding schedule: " . $conn->error;
         }
-    } else {
-        echo "Error adding subject: " . $conn->error;
     }
-}
 
 // Update Schedule
 if (isset($_POST['updateSchedule'])) {
