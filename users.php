@@ -279,7 +279,7 @@ $inactive_count = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as cou
         <h2 style="text-align: center; font-size: 20px;margin: 15px 0">Lyceum of Alabang</h2>
         
         <div class="icons">
-            <a href="index.php" class="active"><i class='bx bxs-home'></i>Home</a>
+            <a href="index.php" class=""><i class='bx bxs-home'></i>Home</a>
             <a href="users.php" class="active"><i class='bx bxs-user-pin' ></i> Users</a>
             <a href="rooms.php"><i class='bx bx-folder-open'></i> Rooms</a>
             <a href="access_logs.php"><i class='bx bx-bookmark-alt-plus'></i> Access Logs</a>

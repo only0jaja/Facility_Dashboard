@@ -84,7 +84,7 @@ if (isset($_POST['addSchedule'])) {
     $endTime = $_POST['endTime'];
     $courseSectionId = $_POST['courseSection'];
     
-        /// Step 1: Check if subject already exists
+        /// Check if subject already exists
         $checkSubject = $conn->query("SELECT Subject_id FROM subject WHERE Code = '$subjectCode'");
 
         if ($checkSubject->num_rows > 0) {
@@ -102,7 +102,7 @@ if (isset($_POST['addSchedule'])) {
             }
         }
         
-        // Step 2: Insert into schedule table
+        // Insert into schedule table
         $sql2 = "INSERT INTO schedule (Subject_id, Faculty_id, Room_id, Day, Start_time, End_time)
                 VALUES ('$subjectId', '$facultyId', '$roomId', '$day', '$startTime', '$endTime')";
 
@@ -122,45 +122,150 @@ if (isset($_POST['addSchedule'])) {
             echo "Error adding schedule: " . $conn->error;
         }
     }
-
 // Update Schedule
 if (isset($_POST['updateSchedule'])) {
-    // Get form data
-    $scheduleId = $_POST['schedule_id'];
-    $subjectId = $_POST['subject_id'];
-    $subjectCode = $_POST['subjectCode'];
-    $subjectDescription = $_POST['subjectDescription'];
-    $facultyId = $_POST['faculty'];
-    $roomId = $_POST['room'];
-    $day = $_POST['day'];
-    $startTime = $_POST['startTime'];
-    $endTime = $_POST['endTime'];
-    $courseSectionId = $_POST['courseSection'];
-    
-    // Update subject table
-    $sql1 = "UPDATE subject SET Code = '$subjectCode', Description = '$subjectDescription' WHERE Subject_id = '$subjectId'";
-    
-    if ($conn->query($sql1)) {
-        // Update schedule table
-        $sql2 = "UPDATE schedule SET Faculty_id = '$facultyId', Room_id = '$roomId', Day = '$day', 
-                 Start_time = '$startTime', End_time = '$endTime' WHERE Schedule_id = '$scheduleId'";
-        
-        if ($conn->query($sql2)) {
-            // Update schedule_access table
-            $sql3 = "UPDATE schedule_access SET CourseSection_id = '$courseSectionId' WHERE Schedule_id = '$scheduleId'";
-            
-            if ($conn->query($sql3)) {
-                echo "<script>alert('Schedule updated successfully!'); window.location.href='schedule.php';</script>";
-            } else {
-                echo "Error updating schedule access: " . $conn->error;
+    // Get and escape form data
+    $scheduleId = $conn->real_escape_string($_POST['schedule_id']);
+    $subjectId = $conn->real_escape_string($_POST['subject_id']); // current subject id before change
+    $subjectCode = $conn->real_escape_string($_POST['subjectCode']);
+    $subjectDescription = $conn->real_escape_string($_POST['subjectDescription']);
+    $facultyId = $conn->real_escape_string($_POST['faculty']);
+    $roomId = $conn->real_escape_string($_POST['room']);
+    $day = $conn->real_escape_string($_POST['day']);
+    $startTime = $conn->real_escape_string($_POST['startTime']);
+    $endTime = $conn->real_escape_string($_POST['endTime']);
+    $courseSectionId = $conn->real_escape_string($_POST['courseSection']);
+
+    // ----- Step A: Conflict checks (exclude current schedule) -----
+    // Room/time conflict
+    $checkDuplicate = $conn->query("
+        SELECT * FROM schedule
+        WHERE Room_id = '$roomId'
+          AND Day = '$day'
+          AND Schedule_id != '$scheduleId'
+          AND (Start_time < '$endTime' AND End_time > '$startTime')
+    ");
+
+    if ($checkDuplicate === false) {
+        echo "Database error (conflict check): " . $conn->error;
+        exit;
+    }
+
+    if ($checkDuplicate->num_rows > 0) {
+        echo "<script>
+                alert('Conflict detected! The selected room and time overlap with another schedule.');
+                window.location.href='schedule.php';
+              </script>";
+        exit;
+    }
+
+    // Faculty/time conflict
+    $checkFacultyConflict = $conn->query("
+        SELECT * FROM schedule
+        WHERE Faculty_id = '$facultyId'
+          AND Day = '$day'
+          AND Schedule_id != '$scheduleId'
+          AND (Start_time < '$endTime' AND End_time > '$startTime')
+    ");
+
+    if ($checkFacultyConflict === false) {
+        echo "Database error (faculty conflict check): " . $conn->error;
+        exit;
+    }
+
+    if ($checkFacultyConflict->num_rows > 0) {
+        echo "<script>
+                alert('Conflict detected! This faculty is already assigned to another schedule at this time.');
+                window.location.href='schedule.php';
+              </script>";
+        exit;
+    }
+
+    // ----- Step B: Subject code handling -----
+    // Check if a subject with this code already exists
+    $checkSubject = $conn->query("SELECT Subject_id, Code FROM subject WHERE Code = '$subjectCode'");
+
+    if ($checkSubject === false) {
+        echo "Database error (subject check): " . $conn->error;
+        exit;
+    }
+
+    if ($checkSubject->num_rows > 0) {
+        $existing = $checkSubject->fetch_assoc();
+        $existingSubjectId = $existing['Subject_id'];
+
+        if ($existingSubjectId == $subjectId) {
+            // The code matches the current subject -> update description only
+            $sql1 = "UPDATE subject SET Description = '$subjectDescription' WHERE Subject_id = '$subjectId'";
+            if (!$conn->query($sql1)) {
+                echo "Error updating subject: " . $conn->error;
+                exit;
             }
+            $subjectIdToUse = $subjectId;
         } else {
-            echo "Error updating schedule: " . $conn->error;
+            // A different subject has the same code -> reuse that existing subject
+            // We will attach the schedule to the existing subject id ($existingSubjectId)
+            $subjectIdToUse = $existingSubjectId;
+
+            // Optionally: update the existing subject's description (if you want)
+            $sqlUpdExist = "UPDATE subject SET Description = '$subjectDescription' WHERE Subject_id = '$existingSubjectId'";
+            if (!$conn->query($sqlUpdExist)) {
+                echo "Warning: failed to update existing subject description: " . $conn->error;
+                // Not fatal, continue
+            }
         }
     } else {
-        echo "Error updating subject: " . $conn->error;
+        // No existing subject with this code -> update the current subject row with new code & description
+        $sql1 = "UPDATE subject SET Code = '$subjectCode', Description = '$subjectDescription' WHERE Subject_id = '$subjectId'";
+        if ($conn->query($sql1)) {
+            $subjectIdToUse = $subjectId;
+        } else {
+            echo "Error updating subject: " . $conn->error;
+            exit;
+        }
     }
+
+    // ----- Step C: Update schedule to point to subjectIdToUse and update schedule fields -----
+    // If subjectIdToUse differs from original subjectId, change schedule.Subject_id to the new subject and consider cleaning up old subject
+    $sql2 = "UPDATE schedule 
+             SET Subject_id = '$subjectIdToUse', Faculty_id = '$facultyId', Room_id = '$roomId', Day = '$day',
+                 Start_time = '$startTime', End_time = '$endTime'
+             WHERE Schedule_id = '$scheduleId'";
+
+    if (!$conn->query($sql2)) {
+        echo "Error updating schedule: " . $conn->error;
+        exit;
+    }
+
+    // Update schedule_access (course section)
+    $sql3 = "UPDATE schedule_access SET CourseSection_id = '$courseSectionId' WHERE Schedule_id = '$scheduleId'";
+    if (!$conn->query($sql3)) {
+        echo "Error updating schedule access: " . $conn->error;
+        exit;
+    }
+
+    // ----- Step D: Cleanup: if we switched subject and the old subject has no schedules, delete it -----
+    if (isset($subjectIdToUse) && $subjectIdToUse != $subjectId) {
+        // Check if old subject has any schedules left
+        $chkOrphan = $conn->query("SELECT COUNT(*) AS cnt FROM schedule WHERE Subject_id = '$subjectId'");
+        if ($chkOrphan && $chkOrphan->num_rows > 0) {
+            $row = $chkOrphan->fetch_assoc();
+            if ($row['cnt'] == 0) {
+                // safe to delete orphaned subject
+                $conn->query("DELETE FROM subject WHERE Subject_id = '$subjectId'");
+                // If deletion fails, it's non-fatal — skip
+            }
+        }
+    }
+
+    // Success
+    echo "<script>
+            alert('Schedule updated successfully!');
+            window.location.href='schedule.php';
+          </script>";
+    exit;
 }
+
 
 // Delete Schedule
 if (isset($_GET['delete_id'])) {
@@ -577,37 +682,42 @@ function closeModal() {
     }
 }
 
-function openEditModal(scheduleId) {
+
+function openEditModal(id) {
+    // Open modal first
+    document.getElementById('editScheduleModal').style.display = 'block';
+
     // Fetch schedule data via AJAX
-    fetch(`get_schedule_data.php?schedule_id=${scheduleId}`)
+    fetch('ajax/fetch_schedule.php?id=' + id)
         .then(response => response.json())
         .then(data => {
-            if (data.success) {
-                // Populate the edit form with data
-                document.getElementById('edit_schedule_id').value = data.schedule_id;
-                document.getElementById('edit_subject_id').value = data.subject_id;
-                document.getElementById('edit_subjectCode').value = data.code;
-                document.getElementById('edit_subjectDescription').value = data.description;
-                document.getElementById('edit_faculty').value = data.faculty_id;
-                document.getElementById('edit_room').value = data.room_id;
-                document.getElementById('edit_day').value = data.day;
-                document.getElementById('edit_startTime').value = data.start_time;
-                document.getElementById('edit_endTime').value = data.end_time;
-                document.getElementById('edit_courseSection').value = data.course_section_id;
-                
-                // Show the edit modal
-                const modal = document.getElementById('editScheduleModal');
-                modal.style.display = 'block';
-                document.body.style.overflow = 'hidden';
+            if (data.error) {
+                alert("Error loading schedule data: " + data.error);
+                closeEditModal();
             } else {
-                alert('Error loading schedule data');
+                // Fill the modal fields
+                document.getElementById('edit_schedule_id').value = data.Schedule_id;
+                document.getElementById('edit_subject_id').value = data.Subject_id;
+                document.getElementById('edit_subjectCode').value = data.Code;
+                document.getElementById('edit_subjectDescription').value = data.Description;
+                document.getElementById('edit_faculty').value = data.Faculty_id;
+                document.getElementById('edit_room').value = data.Room_id;
+                document.getElementById('edit_day').value = data.Day;
+                document.getElementById('edit_startTime').value = data.Start_time;
+                document.getElementById('edit_endTime').value = data.End_time;
+                document.getElementById('edit_courseSection').value = data.CourseSection_id;
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            alert('Error loading schedule data');
+            alert("Error loading schedule data: " + error);
+            closeEditModal();
         });
 }
+
+function closeEditModal() {
+    document.getElementById('editScheduleModal').style.display = 'none';
+}
+
 
 function closeEditModal() {
     const modal = document.getElementById('editScheduleModal');
