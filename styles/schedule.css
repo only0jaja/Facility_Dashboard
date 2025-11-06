@@ -223,7 +223,7 @@ tbody tr:nth-child(even):hover {
     justify-content: center;
     align-items: center;
     flex-wrap: nowrap;
-    padding: 4px !important;
+    padding: 20px;
 }
 
 .btn-edit, .btn-delete {
