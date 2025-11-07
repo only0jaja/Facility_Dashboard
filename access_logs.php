@@ -29,7 +29,7 @@ if (!isset($_SESSION['id'])) {
    <div class="sidebar" id="sidebar">
                         <img src="./img/loalogo.png" alt="Lyceum of Alabang Logo" style="width:120px; height:120px; border-radius:50%; object-fit: cover;margin-left: auto; margin-right: auto;">
 
-              <h2 style="text-align: center; font-size: 20px;margin: 15px 0">
+            <h2 style="text-align: center; font-size: 20px;margin: 15px 0">
                 Lyceum of Alabang
             </h2>
             
@@ -109,7 +109,6 @@ if (!isset($_SESSION['id'])) {
                     FROM access_log 
                     LEFT JOIN classrooms ON access_log.Room_id = classrooms.Room_id 
                     LEFT JOIN Users ON access_log.User_id = Users.User_id
-                    LEFT JOIN Course_section ON Course_section.CourseSection_id = Course_section.CourseSection_id
                     ORDER BY Access_time DESC
                     ");
                 ?>
