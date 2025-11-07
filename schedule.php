@@ -84,33 +84,52 @@ if (isset($_POST['addSchedule'])) {
     $endTime = $_POST['endTime'];
     $courseSectionId = $_POST['courseSection'];
     
-    // Step 1: Insert into subject table
-    $sql1 = "INSERT INTO subject (Code, Description) VALUES ('$subjectCode', '$subjectDescription')";
+    // Check for potential conflicts (same room, same time, same day)
+    $conflictCheck = $conn->query("
+        SELECT sch.Schedule_id 
+        FROM schedule AS sch
+        JOIN schedule_access AS sa ON sch.Schedule_id = sa.Schedule_id
+        WHERE sch.Room_id = '$roomId' 
+        AND sch.Day = '$day'
+        AND sa.CourseSection_id = '$courseSectionId'
+        AND (
+            (sch.Start_time <= '$startTime' AND sch.End_time > '$startTime') OR
+            (sch.Start_time < '$endTime' AND sch.End_time >= '$endTime') OR
+            (sch.Start_time >= '$startTime' AND sch.End_time <= '$endTime')
+        )
+    ");
     
-    if ($conn->query($sql1)) {
-        $subjectId = $conn->insert_id;
+    if ($conflictCheck->num_rows > 0) {
+        echo "<script>alert('Error: Schedule conflict detected! There is already a schedule for this room and course section at the same time.');</script>";
+    } else {
+        // Step 1: Insert into subject table
+        $sql1 = "INSERT INTO subject (Code, Description) VALUES ('$subjectCode', '$subjectDescription')";
         
-        // Step 2: Insert into schedule table
-        $sql2 = "INSERT INTO schedule (Subject_id, Faculty_id, Room_id, Day, Start_time, End_time) 
-                VALUES ('$subjectId', '$facultyId', '$roomId', '$day', '$startTime', '$endTime')";
-        
-        if ($conn->query($sql2)) {
-            $scheduleId = $conn->insert_id;
+        if ($conn->query($sql1)) {
+            $subjectId = $conn->insert_id;
             
-            // Step 3: Insert into schedule_access table
-            $sql3 = "INSERT INTO schedule_access (Schedule_id, CourseSection_id) 
-                    VALUES ('$scheduleId', '$courseSectionId')";
+            // Step 2: Insert into schedule table
+            $sql2 = "INSERT INTO schedule (Subject_id, Faculty_id, Room_id, Day, Start_time, End_time) 
+                    VALUES ('$subjectId', '$facultyId', '$roomId', '$day', '$startTime', '$endTime')";
             
-            if ($conn->query($sql3)) {
-                echo "<script>alert('Schedule added successfully!'); window.location.href='schedule.php';</script>";
+            if ($conn->query($sql2)) {
+                $scheduleId = $conn->insert_id;
+                
+                // Step 3: Insert into schedule_access table
+                $sql3 = "INSERT INTO schedule_access (Schedule_id, CourseSection_id) 
+                        VALUES ('$scheduleId', '$courseSectionId')";
+                
+                if ($conn->query($sql3)) {
+                    echo "<script>alert('Schedule added successfully!'); window.location.href='schedule.php';</script>";
+                } else {
+                    echo "Error adding schedule access: " . $conn->error;
+                }
             } else {
-                echo "Error adding schedule access: " . $conn->error;
+                echo "Error adding schedule: " . $conn->error;
             }
         } else {
-            echo "Error adding schedule: " . $conn->error;
+            echo "Error adding subject: " . $conn->error;
         }
-    } else {
-        echo "Error adding subject: " . $conn->error;
     }
 }
 
@@ -128,28 +147,48 @@ if (isset($_POST['updateSchedule'])) {
     $endTime = $_POST['endTime'];
     $courseSectionId = $_POST['courseSection'];
     
-    // Update subject table
-    $sql1 = "UPDATE subject SET Code = '$subjectCode', Description = '$subjectDescription' WHERE Subject_id = '$subjectId'";
+    // Check for conflicts (excluding current schedule)
+    $conflictCheck = $conn->query("
+        SELECT sch.Schedule_id 
+        FROM schedule AS sch
+        JOIN schedule_access AS sa ON sch.Schedule_id = sa.Schedule_id
+        WHERE sch.Room_id = '$roomId' 
+        AND sch.Day = '$day'
+        AND sa.CourseSection_id = '$courseSectionId'
+        AND sch.Schedule_id != '$scheduleId'
+        AND (
+            (sch.Start_time <= '$startTime' AND sch.End_time > '$startTime') OR
+            (sch.Start_time < '$endTime' AND sch.End_time >= '$endTime') OR
+            (sch.Start_time >= '$startTime' AND sch.End_time <= '$endTime')
+        )
+    ");
     
-    if ($conn->query($sql1)) {
-        // Update schedule table
-        $sql2 = "UPDATE schedule SET Faculty_id = '$facultyId', Room_id = '$roomId', Day = '$day', 
-                 Start_time = '$startTime', End_time = '$endTime' WHERE Schedule_id = '$scheduleId'";
+    if ($conflictCheck->num_rows > 0) {
+        echo "<script>alert('Error: Schedule conflict detected! There is already a schedule for this room and course section at the same time.');</script>";
+    } else {
+        // Update subject table
+        $sql1 = "UPDATE subject SET Code = '$subjectCode', Description = '$subjectDescription' WHERE Subject_id = '$subjectId'";
         
-        if ($conn->query($sql2)) {
-            // Update schedule_access table
-            $sql3 = "UPDATE schedule_access SET CourseSection_id = '$courseSectionId' WHERE Schedule_id = '$scheduleId'";
+        if ($conn->query($sql1)) {
+            // Update schedule table
+            $sql2 = "UPDATE schedule SET Faculty_id = '$facultyId', Room_id = '$roomId', Day = '$day', 
+                     Start_time = '$startTime', End_time = '$endTime' WHERE Schedule_id = '$scheduleId'";
             
-            if ($conn->query($sql3)) {
-                echo "<script>alert('Schedule updated successfully!'); window.location.href='schedule.php';</script>";
+            if ($conn->query($sql2)) {
+                // Update schedule_access table
+                $sql3 = "UPDATE schedule_access SET CourseSection_id = '$courseSectionId' WHERE Schedule_id = '$scheduleId'";
+                
+                if ($conn->query($sql3)) {
+                    echo "<script>alert('Schedule updated successfully!'); window.location.href='schedule.php';</script>";
+                } else {
+                    echo "Error updating schedule access: " . $conn->error;
+                }
             } else {
-                echo "Error updating schedule access: " . $conn->error;
+                echo "Error updating schedule: " . $conn->error;
             }
         } else {
-            echo "Error updating schedule: " . $conn->error;
+            echo "Error updating subject: " . $conn->error;
         }
-    } else {
-        echo "Error updating subject: " . $conn->error;
     }
 }
 
@@ -327,6 +366,7 @@ if (isset($_GET['edit_id'])) {
                 
                 // Display schedules grouped by course section
                 foreach ($groupedSchedules as $courseSectionId => $data) {
+                    echo "<div class='course-section-group'>";
                     echo "<h2 style='padding-top: 25px'>Schedule for {$data['name']}</h2>";
                     echo "<table>";
                     echo "<thead>
@@ -347,8 +387,8 @@ if (isset($_GET['edit_id'])) {
                                 <td>{$row['Code']}</td>
                                 <td>{$row['Description']}</td>
                                 <td>{$row['Day']}</td>
-                                <td>{$row['Start_time']}</td>
-                                <td>{$row['End_time']}</td>
+                                <td style='width: 160px'>{$row['Start_time']}</td>
+                                <td style='width: 160px'>{$row['End_time']}</td>
                                 <td>{$row['Room_code']}</td>
                                 <td>{$row['F_name']} {$row['L_name']}</td>
                                 <td class='action-buttons'>
@@ -362,7 +402,7 @@ if (isset($_GET['edit_id'])) {
                             </tr>";
                     }
 
-                    echo "</tbody></table><br>";
+                    echo "</tbody></table></div><br>";
                 }
             } else {
                 echo "<div class='no-results'>No schedule found matching your criteria.</div>";
@@ -390,13 +430,13 @@ if (isset($_GET['edit_id'])) {
                         <label for="subjectDescription">Subject Description</label>
                         <input type="text" id="subjectDescription" name="subjectDescription" placeholder="Enter subject description" required>
                     </div>
-
+                       
                     <div class="form-group">
                         <label for="faculty">Faculty</label>
                         <select id="faculty" name="faculty" required>
                             <option value="">Select Faculty</option>
                             <?php
-                            $facultyQuery = $conn->query("SELECT User_id, F_name, L_name FROM users WHERE Role = 'Faculty'");
+                            $facultyQuery = $conn->query("SELECT * from users WHERE Role = 'Faculty' AND Status = 'Active'");
                             while ($faculty = $facultyQuery->fetch_assoc()) {
                                 echo "<option value='{$faculty['User_id']}'>{$faculty['F_name']} {$faculty['L_name']}</option>";
                             }
@@ -571,7 +611,12 @@ function closeModal() {
 function openEditModal(scheduleId) {
     // Fetch schedule data via AJAX
     fetch(`get_schedule_data.php?schedule_id=${scheduleId}`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 // Populate the edit form with data
@@ -591,12 +636,12 @@ function openEditModal(scheduleId) {
                 modal.style.display = 'block';
                 document.body.style.overflow = 'hidden';
             } else {
-                alert('Error loading schedule data');
+                alert('Error loading schedule data: ' + (data.message || 'Unknown error'));
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Error loading schedule data');
+            alert('Error loading schedule data. Please check if get_schedule_data.php exists.');
         });
 }
 
@@ -634,9 +679,11 @@ function clearFilters() {
 // Search functionality
 document.getElementById('searchInput').addEventListener('input', function() {
     const searchValue = this.value.toLowerCase();
-    const allTables = document.querySelectorAll('.schedule table');
+    const courseGroups = document.querySelectorAll('.course-section-group');
+    let anyGroupVisible = false;
 
-    allTables.forEach(table => {
+    courseGroups.forEach(group => {
+        const table = group.querySelector('table');
         const rows = table.querySelectorAll('tbody tr');
         let hasVisibleRow = false;
 
@@ -654,24 +701,19 @@ document.getElementById('searchInput').addEventListener('input', function() {
             if (matchFound) hasVisibleRow = true;
         });
 
-        const title = table.previousElementSibling;
+        // Show/hide the entire group
         if (hasVisibleRow || searchValue === '') {
-            table.style.display = '';
-            if (title && title.tagName.toLowerCase() === 'h2') {
-                title.style.display = '';
-            }
+            group.style.display = '';
+            anyGroupVisible = true;
         } else {
-            table.style.display = 'none';
-            if (title && title.tagName.toLowerCase() === 'h2') {
-                title.style.display = 'none';
-            }
+            group.style.display = 'none';
         }
     });
 
-    const visibleTables = Array.from(allTables).some(table => table.style.display !== 'none');
+    // Show message if no groups are visible
     let noResultsMsg = document.querySelector('.no-results-search');
-
-    if (!visibleTables && searchValue !== '') {
+    
+    if (!anyGroupVisible && searchValue !== '') {
         if (!noResultsMsg) {
             noResultsMsg = document.createElement('div');
             noResultsMsg.className = 'no-results-search';

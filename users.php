@@ -2,14 +2,35 @@
 include 'conn.php';
 session_start();
 
+// DEBUG: Enable error reporting
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 // Prevent browser from caching this page
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Cache-Control: post-check=0, pre-check=0", false);
 header("Pragma: no-cache");
 header("Expires: 0");
 
+// DEBUG: Enhanced logging
+error_log("=== USER MANAGEMENT DEBUG ===");
+error_log("REQUEST METHOD: " . $_SERVER['REQUEST_METHOD']);
+
+// TEMPORARY DEBUG - Log all POST data
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    error_log("POST DATA: " . print_r($_POST, true));
+    file_put_contents('debug_post.log', date('Y-m-d H:i:s') . " - " . print_r($_POST, true) . "\n", FILE_APPEND);
+}
+
+// Check database connection
+if (!$conn) {
+    die("Database connection failed: " . mysqli_connect_error());
+} else {
+    error_log("Database connection successful");
+}
+
 // Check if user is logged in
-if (!isset($_SESSION['id'])) {
+if (!isset($_SESSION['id'])){
     header("Location: login.php");
     exit();
 }
@@ -18,16 +39,30 @@ if (!isset($_SESSION['id'])) {
 $current_tab = isset($_GET['tab']) ? $_GET['tab'] : 'students';
 
 // Handle form submission for adding user
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_user'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_user'])){
+    error_log("=== ADD USER FORM SUBMISSION DETECTED ===");
+    
+    // Log all received data
+    $required_fields = ['rfid_tag', 'f_name', 'l_name', 'role', 'status'];
+    foreach($required_fields as $field) {
+        error_log("Field $field: " . ($_POST[$field] ?? 'MISSING'));
+    }
+    
     $rfid_tag = trim($_POST['rfid_tag']);
     $f_name = trim($_POST['f_name']);
     $l_name = trim($_POST['l_name']);
-    $courseSection_id = $_POST['courseSection_id'];
+    $courseSection_id = isset($_POST['courseSection_id']) ? $_POST['courseSection_id'] : null;
     $role = $_POST['role'];
     $status = $_POST['status'];
     
+    // DEBUG: Enhanced logging
+    error_log("=== ADD USER DEBUG ===");
+    error_log("RFID: '$rfid_tag', First: '$f_name', Last: '$l_name'");
+    error_log("Role: '$role', Status: '$status', CourseSection: '$courseSection_id'");
+    
     // Validate required fields
     if (!empty($rfid_tag) && !empty($f_name) && !empty($l_name) && !empty($role) && !empty($status)) {
+        error_log("Basic validation passed");
         
         // Check if RFID tag already exists
         $check_sql = "SELECT User_id FROM users WHERE Rfid_tag = ?";
@@ -40,9 +75,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_user'])) {
             
             if (mysqli_stmt_num_rows($check_stmt) > 0) {
                 $error_message = "Error: RFID tag '$rfid_tag' already exists!";
+                error_log("RFID tag already exists: $rfid_tag");
             } else {
+                error_log("RFID tag is unique, proceeding with insertion");
+                
                 // Handle CourseSection_id based on role
                 if ($role === 'Student') {
+                    error_log("Processing STUDENT role");
                     if (!empty($courseSection_id)) {
                         // Verify the course section exists
                         $verify_course_sql = "SELECT CourseSection_id FROM course_section WHERE CourseSection_id = ?";
@@ -52,54 +91,80 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_user'])) {
                         mysqli_stmt_store_result($verify_course_stmt);
                         
                         if (mysqli_stmt_num_rows($verify_course_stmt) > 0) {
+                            error_log("Course section validated: $courseSection_id");
                             // Student with valid course section
                             $insert_sql = "INSERT INTO users (Rfid_tag, F_name, L_name, CourseSection_id, Role, Status) VALUES (?, ?, ?, ?, ?, ?)";
                             $insert_stmt = mysqli_prepare($conn, $insert_sql);
                             if ($insert_stmt) {
                                 mysqli_stmt_bind_param($insert_stmt, "sssiss", $rfid_tag, $f_name, $l_name, $courseSection_id, $role, $status);
+                                error_log("Preparing to insert STUDENT with course section");
+                            } else {
+                                error_log("Failed to prepare student insert statement: " . mysqli_error($conn));
+                                $error_message = "Database error: " . mysqli_error($conn);
                             }
                         } else {
                             $error_message = "Error: Invalid course section selected!";
-                            mysqli_stmt_close($verify_course_stmt);
-                            mysqli_stmt_close($check_stmt);
-                            $courseSection_id = null;
+                            error_log("Invalid course section: $courseSection_id");
                         }
-                        mysqli_stmt_close($verify_course_stmt);
+                        if (isset($verify_course_stmt)) mysqli_stmt_close($verify_course_stmt);
                     } else {
                         $error_message = "Course Section is required for Students!";
+                        error_log("Missing course section for student");
                     }
                 } else {
                     // Faculty/Admin - set CourseSection_id to NULL
+                    error_log("Processing FACULTY role - setting CourseSection_id to NULL");
                     $insert_sql = "INSERT INTO users (Rfid_tag, F_name, L_name, CourseSection_id, Role, Status) VALUES (?, ?, ?, NULL, ?, ?)";
                     $insert_stmt = mysqli_prepare($conn, $insert_sql);
                     if ($insert_stmt) {
                         mysqli_stmt_bind_param($insert_stmt, "sssss", $rfid_tag, $f_name, $l_name, $role, $status);
+                        error_log("Preparing to insert FACULTY with NULL course section");
+                    } else {
+                        error_log("Failed to prepare faculty insert statement: " . mysqli_error($conn));
+                        $error_message = "Database error: " . mysqli_error($conn);
                     }
                 }
                 
-                // Only proceed with insertion if no errors
-                if (!isset($error_message)) {
-                    if (isset($insert_stmt) && mysqli_stmt_execute($insert_stmt)) {
-                        $success_message = "User added successfully!";
+                // Only proceed with insertion if no errors and statement is prepared
+                if (!isset($error_message) && isset($insert_stmt)) {
+                    error_log("Attempting to execute insert statement");
+                    if (mysqli_stmt_execute($insert_stmt)) {
+                        $inserted_id = mysqli_insert_id($conn);
+                        $affected_rows = mysqli_stmt_affected_rows($insert_stmt);
+                        
+                        error_log("SUCCESS: Insert executed - Affected rows: $affected_rows, Insert ID: $inserted_id");
+                        $success_message = "User added successfully! ID: $inserted_id";
+                        
                         // Redirect to appropriate tab
                         $redirect_tab = ($role === 'Student') ? 'students' : 'faculty';
+                        error_log("Redirecting to: users.php?tab=$redirect_tab");
                         header("Location: users.php?tab=$redirect_tab");
                         exit();
                     } else {
                         $error_message = "Error adding user: " . mysqli_error($conn);
+                        error_log("FAILED: Error executing insert: " . mysqli_error($conn));
+                        error_log("SQL error: " . mysqli_stmt_error($insert_stmt));
                     }
                     
-                    if (isset($insert_stmt)) {
-                        mysqli_stmt_close($insert_stmt);
+                    mysqli_stmt_close($insert_stmt);
+                } else {
+                    error_log("Insert statement not prepared or error exists");
+                    error_log("Error message: " . ($error_message ?? 'None'));
+                    error_log("Insert stmt set: " . (isset($insert_stmt) ? 'Yes' : 'No'));
+                    if (!isset($error_message)) {
+                        $error_message = "Failed to prepare insert statement";
                     }
                 }
             }
             mysqli_stmt_close($check_stmt);
         } else {
             $error_message = "Error preparing check statement: " . mysqli_error($conn);
+            error_log("Error preparing check statement: " . mysqli_error($conn));
         }
     } else {
         $error_message = "Please fill in all required fields!";
+        error_log("Missing required fields");
+        error_log("RFID: '$rfid_tag', First: '$f_name', Last: '$l_name', Role: '$role', Status: '$status'");
     }
 }
 
@@ -279,7 +344,7 @@ $inactive_count = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as cou
         <h2 style="text-align: center; font-size: 20px;margin: 15px 0">Lyceum of Alabang</h2>
         
         <div class="icons">
-            <a href="index.php" class="active"><i class='bx bxs-home'></i>Home</a>
+            <a href="index.php"><i class='bx bxs-home'></i>Home</a>
             <a href="users.php" class="active"><i class='bx bxs-user-pin' ></i> Users</a>
             <a href="rooms.php"><i class='bx bx-folder-open'></i> Rooms</a>
             <a href="access_logs.php"><i class='bx bx-bookmark-alt-plus'></i> Access Logs</a>
@@ -323,7 +388,7 @@ $inactive_count = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as cou
                 </div>
             </div>
         </div>
-
+       
         <!-- Header Section -->
         <div class="header">
             <div class="controls-section">
@@ -377,9 +442,21 @@ $inactive_count = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as cou
                     <button class="clear-filters" id="clearFilters">
                         <i class="fas fa-times"></i> Clear Filters
                     </button>
-                    <button class="add-user-btn" id="addUserBtn">
-                        <i class="fas fa-plus"></i> Add User
-                    </button>
+                    
+                    <!-- Dynamic Add Buttons based on current tab -->
+                    <?php if ($current_tab !== 'all'): ?>
+                    <div class="add-user-buttons <?php echo 'tab-' . $current_tab; ?>">
+                        <?php if ($current_tab === 'students'): ?>
+                            <button class="add-user-btn student-btn" onclick="openAddUserModal('Student')">
+                                <i class="fas fa-user-graduate"></i> Add Student
+                            </button>
+                        <?php elseif ($current_tab === 'faculty'): ?>
+                            <button class="add-user-btn faculty-btn" onclick="openAddUserModal('Faculty')">
+                                <i class="fas fa-chalkboard-teacher"></i> Add Faculty
+                            </button>
+                        <?php endif; ?>
+                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -566,7 +643,7 @@ $inactive_count = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as cou
     <div id="addUserModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Add New User</h2>
+                <h2 id="modalTitle">Add New User</h2>
                 <span class="close">&times;</span>
             </div>
             
@@ -578,37 +655,29 @@ $inactive_count = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as cou
                 <div class="alert alert-success"><?php echo $success_message; ?></div>
             <?php endif; ?>
             
-            <form method="POST" action="">
+            <form method="POST" action="" id="addUserForm">
+                <input type="hidden" id="selected_role" name="role" value="">
+                
                 <div class="form-group">
                     <label for="rfid_tag">RFID Tag <span class="required">*</span></label>
                     <input type="text" id="rfid_tag" name="rfid_tag" required 
-                            placeholder="Enter RFID tag (e.g., 82 04 10 01)">
+                            placeholder="Enter RFID tag (e.g., 82 04 10 01)" value="TEST123">
                 </div>
                 
                 <div class="form-group">
                     <label for="f_name">First Name <span class="required">*</span></label>
                     <input type="text" id="f_name" name="f_name" required 
-                            placeholder="Enter first name">
+                            placeholder="Enter first name" value="John">
                 </div>
                 
                 <div class="form-group">
                     <label for="l_name">Last Name <span class="required">*</span></label>
                     <input type="text" id="l_name" name="l_name" required 
-                            placeholder="Enter last name">
+                            placeholder="Enter last name" value="Doe">
                 </div>
                     
-                <div class="form-group">
-                    <label for="role">Role <span class="required">*</span></label>
-                    <select id="role" name="role" required onchange="toggleCourseSection()">
-                        <option value="">Select Role</option>
-                        <option value="Student">Student</option>
-                        <option value="Faculty">Faculty</option>
-                        <option value="Admin">Admin</option>
-                    </select>
-                </div>
-                
                 <div class="form-group" id="courseSectionGroup">
-                    <label for="courseSection_id">Course Section</label>
+                    <label for="courseSection_id">Course Section <span class="required" id="courseRequired" style="display:none">*</span></label>
                     <select id="courseSection_id" name="courseSection_id">
                         <option value="">Select Course Section</option>
                         <?php
@@ -625,14 +694,14 @@ $inactive_count = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as cou
                     <label for="status">Status <span class="required">*</span></label>
                     <select id="status" name="status" required>
                         <option value="">Select Status</option>
-                        <option value="Active">Active</option>
+                        <option value="Active" selected>Active</option>
                         <option value="Inactive">Inactive</option>
                     </select>
                 </div>
                 
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
-                    <button type="submit" class="btn btn-primary" name="add_user">Add User</button>
+                    <button type="submit" class="btn btn-primary" name="add_user" id="submitBtn">Add User</button>
                 </div>
             </form>
         </div>

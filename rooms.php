@@ -211,8 +211,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_room'])) {
             <section class="filters">
                 <div class="filter-buttons">
                     <button class="filter active" data-filter="all">All Rooms</button>
-                    <button class="filter" data-filter="available">Unoccupied</button>
-                    <button class="filter" data-filter="occupied">Occupied</button>
+                    <button class="filter" data-filter="available"><i class="fas fa-circle" style="color: #00ff00;"></i> Unoccupied</button>
+                    <button class="filter" data-filter="occupied"><i class="fas fa-circle" style="color: #dc3545;"></i> Occupied</button>
                     <div class="actions">
                         <button class="add-room" id="addRoomBtn">+ Add New Room</button>
                     </div>    
@@ -247,7 +247,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_room'])) {
                             <span class="status <?php echo $statusClass; ?>"><?php echo $row['Status']; ?></span>
                         </div>
                         <div class="room-details">
-                            <p>👥 Capacity: <?php echo $row['Capacity']; ?></p>
+                           
                             <p>🏫 Type: <?php echo $row['Classroom_type']; ?></p>
                         </div>
                         <div class="card-actions">
@@ -283,10 +283,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_room'])) {
                     <input type="text" id="roomCode" name="roomCode" required placeholder="e.g., Room 101">
                 </div>
                 
-                <div class="form-group">
-                    <label for="capacity">Capacity *</label>
-                    <input type="number" id="capacity" name="capacity" required min="1" placeholder="e.g., 30">
-                </div>
                 
                 <div class="form-group">
                     <label for="roomType">Room Type *</label>

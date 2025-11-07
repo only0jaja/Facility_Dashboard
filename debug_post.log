@@ -1,0 +1,200 @@
+2025-11-06 20:14:41 - Array
+(
+    [role] => Faculty
+    [rfid_tag] => TEST123
+    [f_name] => John
+    [l_name] => Doe
+    [courseSection_id] => 
+    [status] => Active
+    [add_user] => 
+)
+
+2025-11-06 20:17:07 - Array
+(
+    [user_id] => 17
+    [status] => Inactive
+    [update_status] => 
+)
+
+2025-11-06 20:19:05 - Array
+(
+    [role] => Student
+    [rfid_tag] => TEST123
+    [f_name] => John
+    [l_name] => sssddd
+    [courseSection_id] => 141
+    [status] => Active
+    [add_user] => 
+)
+
+2025-11-06 20:19:21 - Array
+(
+    [role] => Student
+    [rfid_tag] => TEST123
+    [f_name] => John
+    [l_name] => Doe
+    [courseSection_id] => 131
+    [status] => Active
+    [add_user] => 
+)
+
+2025-11-06 20:23:15 - Array
+(
+    [role] => Student
+    [rfid_tag] => TEST123
+    [f_name] => John
+    [l_name] => Doeffeffefmfjk
+    [courseSection_id] => 
+    [status] => Active
+    [add_user] => 
+)
+
+2025-11-06 20:23:40 - Array
+(
+    [role] => Student
+    [rfid_tag] => 333393
+    [f_name] => John
+    [l_name] => kfekfkfef
+    [courseSection_id] => 111
+    [status] => Active
+    [add_user] => 
+)
+
+2025-11-06 20:24:09 - Array
+(
+    [role] => Faculty
+    [rfid_tag] => 83838838
+    [f_name] => John
+    [l_name] => kkeieifijf
+    [courseSection_id] => 
+    [status] => Active
+    [add_user] => 
+)
+
+2025-11-06 20:24:30 - Array
+(
+    [user_id] => 19
+    [status] => Inactive
+    [update_status] => 
+)
+
+2025-11-06 20:24:33 - Array
+(
+    [user_id] => 19
+    [delete_user] => 
+)
+
+2025-11-06 20:25:32 - Array
+(
+    [role] => Faculty
+    [rfid_tag] => TEST123
+    [f_name] => kristine
+    [l_name] => batoon
+    [courseSection_id] => 
+    [status] => Active
+    [add_user] => 
+)
+
+2025-11-06 20:25:58 - Array
+(
+    [role] => Faculty
+    [rfid_tag] => 333
+    [f_name] => John3
+    [l_name] => Doe
+    [courseSection_id] => 
+    [status] => Active
+    [add_user] => 
+)
+
+2025-11-06 20:26:07 - Array
+(
+    [user_id] => 20
+    [status] => Inactive
+    [update_status] => 
+)
+
+2025-11-06 20:26:09 - Array
+(
+    [user_id] => 20
+    [delete_user] => 
+)
+
+2025-11-06 20:26:31 - Array
+(
+    [role] => Faculty
+    [rfid_tag] => ye773
+    [f_name] => kristine
+    [l_name] => batoon
+    [courseSection_id] => 
+    [status] => Active
+    [add_user] => 
+)
+
+2025-11-06 20:29:21 - Array
+(
+    [user_id] => 21
+    [status] => Inactive
+    [update_status] => 
+)
+
+2025-11-06 20:29:25 - Array
+(
+    [user_id] => 21
+    [delete_user] => 
+)
+
+2025-11-06 20:29:30 - Array
+(
+    [user_id] => 13
+    [status] => Inactive
+    [update_status] => 
+)
+
+2025-11-06 20:29:34 - Array
+(
+    [user_id] => 13
+    [delete_user] => 
+)
+
+2025-11-06 20:29:36 - Array
+(
+    [user_id] => 17
+    [delete_user] => 
+)
+
+2025-11-07 04:31:23 - Array
+(
+    [role] => Faculty
+    [rfid_tag] => TEST123
+    [f_name] => John
+    [l_name] => generoso
+    [courseSection_id] => 
+    [status] => Active
+    [add_user] => 
+)
+
+2025-11-07 04:41:24 - Array
+(
+    [user_id] => 22
+    [status] => Inactive
+    [update_status] => 
+)
+
+2025-11-07 04:41:29 - Array
+(
+    [user_id] => 22
+    [status] => Active
+    [update_status] => 
+)
+
+2025-11-07 05:16:37 - Array
+(
+    [role] => Faculty
+    [rfid_tag] => 56789
+    [f_name] => olivera
+    [l_name] => john
+    [courseSection_id] => 
+    [status] => Active
+    [add_user] => 
+)
+

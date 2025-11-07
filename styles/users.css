@@ -95,7 +95,6 @@ body {
 }
 
 .controls-section h1 {
-    width: 198px;
     color: #2a5298;
     font-weight: 700;
 }
@@ -204,6 +203,46 @@ body {
     transform: translateY(-1px);
 }
 
+/* Add User Buttons Layout */
+.add-user-buttons {
+    display: flex;
+    gap: 12px;
+}
+
+/* Students tab - only show student button */
+.tab-students .add-user-buttons {
+    display: block;
+}
+
+.tab-students .add-user-btn.faculty-btn {
+    display: none !important;
+}
+
+.tab-students .add-user-btn.student-btn {
+    width: 100%;
+    justify-content: center;
+}
+
+/* Faculty tab - only show faculty button */
+.tab-faculty .add-user-buttons {
+    display: block;
+}
+
+.tab-faculty .add-user-btn.student-btn {
+    display: none !important;
+}
+
+.tab-faculty .add-user-btn.faculty-btn {
+    width: 100%;
+    justify-content: center;
+}
+
+/* All tab - COMPLETELY REMOVE both buttons */
+.tab-all .add-user-buttons {
+    display: none !important;
+}
+
+/* Button styles */
 .add-user-btn {
     background: #28a745;
     color: white;
@@ -221,8 +260,23 @@ body {
 }
 
 .add-user-btn:hover {
-    background: #1e7e34;
     transform: translateY(-1px);
+}
+
+.add-user-btn.student-btn {
+    background: #667eea;
+}
+
+.add-user-btn.student-btn:hover {
+    background: #5a6fd8;
+}
+
+.add-user-btn.faculty-btn {
+    background: #f5576c;
+}
+
+.add-user-btn.faculty-btn:hover {
+    background: #e04a5f;
 }
 
 /* Search Box */
@@ -355,11 +409,69 @@ tbody tr:hover {
     font-weight: 500;
 }
 
+/* No Results Styling */
 .no-results {
     text-align: center;
     padding: 40px;
     color: #7e8a9a;
     font-size: 1rem;
+}
+
+.no-results-filtered {
+    text-align: center;
+    padding: 60px 20px;
+    background: #f8f9fa;
+}
+
+.no-results-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    color: #6c757d;
+}
+
+.no-results-content i {
+    font-size: 48px;
+    color: #dee2e6;
+    margin-bottom: 10px;
+}
+
+.no-results-content h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #495057;
+    margin: 0;
+}
+
+.no-results-content p {
+    font-size: 1rem;
+    margin: 0;
+    color: #6c757d;
+    text-align: center;
+    max-width: 300px;
+    line-height: 1.5;
+}
+
+.btn-clear-all {
+    background: #0047AB;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.btn-clear-all:hover {
+    background: #003580;
+    transform: translateY(-1px);
 }
 
 .table-scroll {
@@ -646,6 +758,14 @@ tbody tr:hover {
     .dashboard-stats {
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     }
+    
+    .controls-section {
+        gap: 40px;
+    }
+    
+    .search-box {
+        min-width: 250px;
+    }
 }
 
 @media (max-width: 768px) {
@@ -681,6 +801,19 @@ tbody tr:hover {
         min-width: auto;
     }
     
+    .add-user-buttons {
+        flex-direction: column;
+    }
+    
+    .add-user-btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .tab-all .add-user-buttons {
+        flex-direction: column;
+    }
+    
     .table-scroll {
         overflow-x: auto;
     }
@@ -693,6 +826,22 @@ tbody tr:hover {
     .action-buttons {
         flex-direction: column;
     }
+    
+    .no-results-content {
+        padding: 30px 15px;
+    }
+    
+    .no-results-content i {
+        font-size: 36px;
+    }
+    
+    .no-results-content h3 {
+        font-size: 1.25rem;
+    }
+    
+    .no-results-content p {
+        font-size: 0.9rem;
+    }
 }
 
 @media (max-width: 480px) {
@@ -702,6 +851,18 @@ tbody tr:hover {
     
     .header {
         padding: 15px;
+    }
+    
+    .dashboard-stats {
+        gap: 15px;
+    }
+    
+    .stat-card {
+        padding: 20px;
+    }
+    
+    .stat-info h3 {
+        font-size: 28px;
     }
     
     .modal-header {
@@ -721,4 +882,62 @@ tbody tr:hover {
         padding: 6px 10px;
         font-size: 0.7rem;
     }
+    
+    .no-results-content {
+        padding: 20px 10px;
+    }
+    
+    .no-results-content i {
+        font-size: 32px;
+    }
+    
+    .no-results-content h3 {
+        font-size: 1.1rem;
+    }
+    
+    .no-results-content p {
+        font-size: 0.9rem;
+    }
+    
+    .filter-controls {
+        gap: 8px;
+    }
+    
+    .clear-filters, .add-user-btn {
+        padding: 10px 15px;
+        font-size: 13px;
+    }
+}
+
+/* Loading States */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #0047AB;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Focus states for accessibility */
+button:focus,
+input:focus,
+select:focus {
+    outline: 2px solid #0047AB;
+    outline-offset: 2px;
 }
