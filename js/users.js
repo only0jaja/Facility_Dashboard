@@ -27,13 +27,47 @@ function openDeleteModal(userId, firstName, lastName, role, status) {
     document.getElementById('deleteUserModal').style.display = 'block';
 }
 
-// Open Edit Modal - CORRECTED VERSION
-function openEditModal(userId, firstName, lastName, currentStatus) {
+// Open Edit Modal for full user editing
+function openEditModal(userId, firstName, lastName, rfidTag, role, status, courseSectionId) {
+    console.log("Opening edit modal for user:", userId, firstName, lastName, rfidTag, role, status, courseSectionId);
+    
+    // Set form values
     document.getElementById('edit_user_id').value = userId;
-    document.getElementById('edit_user_name').textContent = firstName + ' ' + lastName;
-    document.getElementById('edit_current_status').textContent = currentStatus;
-    document.getElementById('edit_status').value = currentStatus;
-    document.getElementById('editStatusModal').style.display = 'block';
+    document.getElementById('edit_rfid_tag').value = rfidTag;
+    document.getElementById('edit_f_name').value = firstName;
+    document.getElementById('edit_l_name').value = lastName;
+    document.getElementById('edit_role').value = role;
+    document.getElementById('edit_status').value = status;
+    
+    // Set course section if it exists
+    if (courseSectionId && courseSectionId !== '') {
+        document.getElementById('edit_courseSection_id').value = courseSectionId;
+    } else {
+        document.getElementById('edit_courseSection_id').value = '';
+    }
+    
+    // Toggle course section field based on role
+    toggleCourseSectionEdit();
+    
+    // Show modal
+    document.getElementById('editUserModal').style.display = 'block';
+}
+
+// Toggle course section field in edit modal based on role
+function toggleCourseSectionEdit() {
+    const role = document.getElementById('edit_role').value;
+    const courseSectionGroup = document.getElementById('edit_courseSectionGroup');
+    const courseRequired = document.getElementById('edit_courseRequired');
+    
+    console.log("Toggle course section for role:", role);
+    
+    if (role === 'Student') {
+        if (courseSectionGroup) courseSectionGroup.style.display = 'block';
+        if (courseRequired) courseRequired.style.display = 'inline';
+    } else {
+        if (courseSectionGroup) courseSectionGroup.style.display = 'none';
+        if (courseRequired) courseRequired.style.display = 'none';
+    }
 }
 
 // Open Add User Modal with pre-selected role
@@ -60,37 +94,10 @@ function openAddUserModal(role) {
     document.getElementById('addUserModal').style.display = 'block';
 }
 
-// Enhanced form validation - SIMPLIFIED VERSION
+// Enhanced form validation
 function validateUserForm() {
-    console.log("Form validation started - allowing submission for debugging");
-    return true; // Always return true for now to test
-    
-    /* TEMPORARILY DISABLED FOR DEBUGGING
-    const rfid = document.getElementById('rfid_tag').value;
-    const firstName = document.getElementById('f_name').value;
-    const lastName = document.getElementById('l_name').value;
-    const role = document.getElementById('selected_role').value;
-    const status = document.getElementById('status').value;
-    
-    console.log("Form validation - Role:", role, "Fields filled:", {rfid, firstName, lastName, status});
-    
-    // Basic required field validation
-    if (!rfid || !firstName || !lastName || !status) {
-        alert('Please fill in all required fields.');
-        return false;
-    }
-    
-    // For students only, validate course section
-    if (role === 'Student') {
-        const courseSection = document.getElementById('courseSection_id').value;
-        if (!courseSection) {
-            alert('Course Section is required for Students.');
-            return false;
-        }
-    }
-    
+    console.log("Form validation started");
     return true;
-    */
 }
 
 // Modal functionality
@@ -99,7 +106,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Get modals
     const addUserModal = document.getElementById('addUserModal');
-    const editStatusModal = document.getElementById('editStatusModal');
+    const editUserModal = document.getElementById('editUserModal');
     const deleteUserModal = document.getElementById('deleteUserModal');
     
     // Get close buttons
@@ -118,7 +125,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (cancelEditBtn) {
         cancelEditBtn.addEventListener('click', function() {
-            editStatusModal.style.display = 'none';
+            editUserModal.style.display = 'none';
         });
     }
     
@@ -132,7 +139,7 @@ document.addEventListener('DOMContentLoaded', function() {
     closeButtons.forEach(function(btn) {
         btn.addEventListener('click', function() {
             addUserModal.style.display = 'none';
-            editStatusModal.style.display = 'none';
+            editUserModal.style.display = 'none';
             deleteUserModal.style.display = 'none';
         });
     });
@@ -142,8 +149,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (event.target === addUserModal) {
             addUserModal.style.display = 'none';
         }
-        if (event.target === editStatusModal) {
-            editStatusModal.style.display = 'none';
+        if (event.target === editUserModal) {
+            editUserModal.style.display = 'none';
         }
         if (event.target === deleteUserModal) {
             deleteUserModal.style.display = 'none';
@@ -191,23 +198,75 @@ document.addEventListener('DOMContentLoaded', function() {
     const addUserForm = document.querySelector('#addUserModal form');
     if (addUserForm) {
         addUserForm.addEventListener('submit', function(e) {
-            console.log("=== FORM SUBMISSION TRIGGERED ===");
+            console.log("=== ADD FORM SUBMISSION ===");
             const formData = new FormData(this);
             for (let [key, value] of formData.entries()) {
                 console.log(key + ": " + value);
             }
             
-            // For now, always allow submission for debugging
-            console.log("Allowing form submission for debugging");
+            // Get the role from hidden field
+            const role = document.getElementById('selected_role').value;
             
-            /* COMMENT OUT VALIDATION TEMPORARILY
-            if (!validateUserForm()) {
-                console.log("Form validation failed - preventing submission");
+            // Validate required fields
+            const rfid = document.getElementById('rfid_tag').value;
+            const firstName = document.getElementById('f_name').value;
+            const lastName = document.getElementById('l_name').value;
+            const status = document.getElementById('status').value;
+            
+            if (!rfid || !firstName || !lastName || !status) {
+                alert('Please fill in all required fields.');
                 e.preventDefault();
-            } else {
-                console.log("Form validation passed - allowing submission");
+                return false;
             }
-            */
+            
+            // For students only, validate course section
+            if (role === 'Student') {
+                const courseSection = document.getElementById('courseSection_id').value;
+                if (!courseSection) {
+                    alert('Course Section is required for Students.');
+                    e.preventDefault();
+                    return false;
+                }
+            }
+            
+            return true;
+        });
+    }
+    
+    // Edit form submission validation
+    const editUserForm = document.querySelector('#editUserModal form');
+    if (editUserForm) {
+        editUserForm.addEventListener('submit', function(e) {
+            console.log("=== EDIT FORM SUBMISSION ===");
+            const formData = new FormData(this);
+            for (let [key, value] of formData.entries()) {
+                console.log(key + ": " + value);
+            }
+            
+            // Validate required fields
+            const rfid = document.getElementById('edit_rfid_tag').value;
+            const firstName = document.getElementById('edit_f_name').value;
+            const lastName = document.getElementById('edit_l_name').value;
+            const role = document.getElementById('edit_role').value;
+            const status = document.getElementById('edit_status').value;
+            
+            if (!rfid || !firstName || !lastName || !role || !status) {
+                alert('Please fill in all required fields.');
+                e.preventDefault();
+                return false;
+            }
+            
+            // For students only, validate course section
+            if (role === 'Student') {
+                const courseSection = document.getElementById('edit_courseSection_id').value;
+                if (!courseSection) {
+                    alert('Course Section is required for Students.');
+                    e.preventDefault();
+                    return false;
+                }
+            }
+            
+            return true;
         });
     }
     
@@ -225,7 +284,7 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log("User management initialized successfully");
 });
 
-// Filter users based on search and filters - FIXED VERSION
+// Filter users based on search and filters
 function filterUsers() {
     const searchValue = document.getElementById('searchInput').value.toLowerCase();
     const statusValue = document.getElementById('statusFilter').value;
@@ -264,7 +323,7 @@ function filterUsers() {
             }
         }
         
-        // Check status filter - FIXED: Proper status detection for all tables
+        // Check status filter
         if (statusValue && display) {
             let statusText = '';
             
@@ -320,9 +379,9 @@ function filterUsers() {
 function getStatusColumnIndex(tabId) {
     switch(tabId) {
         case 'students-tab':
-            return 5; // Status is 6th column (index 5) in students table
+            return 6; // Status is 7th column (index 6) in students table
         case 'faculty-tab':
-            return 4; // Status is 5th column (index 4) in faculty table
+            return 5; // Status is 6th column (index 5) in faculty table
         case 'all-tab':
             return 6; // Status is 7th column (index 6) in all users table
         default:
@@ -349,8 +408,8 @@ function showNoResultsMessage(activeTab) {
     // Get number of columns based on the table
     const firstRow = tableBody.querySelector('tr:not(.no-results):not(.no-results-message)');
     const colCount = firstRow ? firstRow.cells.length : 
-                    (activeTab.id === 'students-tab' ? 7 : 
-                     activeTab.id === 'faculty-tab' ? 6 : 8);
+                    (activeTab.id === 'students-tab' ? 8 : 
+                     activeTab.id === 'faculty-tab' ? 7 : 8);
     
     const noResultsMsg = document.createElement('tr');
     noResultsMsg.className = 'no-results-message';
@@ -378,31 +437,6 @@ function clearAllFilters() {
     filterUsers();
 }
 
-// Debug function to check table structure
-function debugTableStructure() {
-    const activeTab = document.querySelector('.tab-content.active');
-    if (!activeTab) return;
-    
-    const rows = activeTab.querySelectorAll('tbody tr');
-    console.log('Table ID:', activeTab.id);
-    
-    if (rows.length > 0) {
-        const firstRow = rows[0];
-        console.log('Number of columns:', firstRow.cells.length);
-        
-        firstRow.cells.forEach((cell, index) => {
-            console.log(`Column ${index}:`, cell.textContent.trim());
-        });
-    }
-}
-
-// Validate RFID tag format
-function validateRFID(rfid) {
-    // Basic RFID validation - adjust pattern as needed
-    const rfidPattern = /^[0-9A-Fa-f\s]+$/;
-    return rfidPattern.test(rfid);
-}
-
 // Export functions for global access
 window.filterUsers = filterUsers;
 window.openEditModal = openEditModal;
@@ -410,7 +444,7 @@ window.openDeleteModal = openDeleteModal;
 window.openAddUserModal = openAddUserModal;
 window.validateUserForm = validateUserForm;
 window.clearAllFilters = clearAllFilters;
-window.debugTableStructure = debugTableStructure;
+window.toggleCourseSectionEdit = toggleCourseSectionEdit;
 
 // Handle page refresh for browser back/forward
 window.addEventListener("pageshow", function (event) {

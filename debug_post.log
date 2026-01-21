@@ -198,3 +198,54 @@
     [add_user] => 
 )
 
+2025-11-07 07:18:53 - Array
+(
+    [role] => Faculty
+    [rfid_tag] => TEST123
+    [f_name] => rey
+    [l_name] => vergel
+    [courseSection_id] => 
+    [status] => Active
+    [add_user] => 
+)
+
+2025-11-07 07:22:53 - Array
+(
+    [role] => Faculty
+    [rfid_tag] => TEST123
+    [f_name] => John
+    [l_name] => Doejj
+    [courseSection_id] => 
+    [status] => Active
+    [add_user] => 
+)
+
+2025-11-07 08:32:33 - Array
+(
+    [role] => Student
+    [rfid_tag] => 3773737
+    [f_name] => EDJEJE
+    [l_name] => Doe
+    [courseSection_id] => 2
+    [status] => Active
+    [add_user] => 
+)
+
+2025-11-07 08:32:47 - Array
+(
+    [role] => Faculty
+    [rfid_tag] => DCDCD
+    [f_name] => DCD
+    [l_name] => Doe
+    [courseSection_id] => 
+    [status] => Active
+    [add_user] => 
+)
+
+2025-11-07 13:31:36 - Array
+(
+    [user_id] => 22
+    [status] => Inactive
+    [update_status] => 
+)
+

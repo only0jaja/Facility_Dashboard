@@ -84,52 +84,33 @@ if (isset($_POST['addSchedule'])) {
     $endTime = $_POST['endTime'];
     $courseSectionId = $_POST['courseSection'];
     
-    // Check for potential conflicts (same room, same time, same day)
-    $conflictCheck = $conn->query("
-        SELECT sch.Schedule_id 
-        FROM schedule AS sch
-        JOIN schedule_access AS sa ON sch.Schedule_id = sa.Schedule_id
-        WHERE sch.Room_id = '$roomId' 
-        AND sch.Day = '$day'
-        AND sa.CourseSection_id = '$courseSectionId'
-        AND (
-            (sch.Start_time <= '$startTime' AND sch.End_time > '$startTime') OR
-            (sch.Start_time < '$endTime' AND sch.End_time >= '$endTime') OR
-            (sch.Start_time >= '$startTime' AND sch.End_time <= '$endTime')
-        )
-    ");
+    // Step 1: Insert into subject table
+    $sql1 = "INSERT INTO subject (Code, Description) VALUES ('$subjectCode', '$subjectDescription')";
     
-    if ($conflictCheck->num_rows > 0) {
-        echo "<script>alert('Error: Schedule conflict detected! There is already a schedule for this room and course section at the same time.');</script>";
-    } else {
-        // Step 1: Insert into subject table
-        $sql1 = "INSERT INTO subject (Code, Description) VALUES ('$subjectCode', '$subjectDescription')";
+    if ($conn->query($sql1)) {
+        $subjectId = $conn->insert_id;
         
-        if ($conn->query($sql1)) {
-            $subjectId = $conn->insert_id;
+        // Step 2: Insert into schedule table
+        $sql2 = "INSERT INTO schedule (Subject_id, Faculty_id, Room_id, Day, Start_time, End_time) 
+                VALUES ('$subjectId', '$facultyId', '$roomId', '$day', '$startTime', '$endTime')";
+        
+        if ($conn->query($sql2)) {
+            $scheduleId = $conn->insert_id;
             
-            // Step 2: Insert into schedule table
-            $sql2 = "INSERT INTO schedule (Subject_id, Faculty_id, Room_id, Day, Start_time, End_time) 
-                    VALUES ('$subjectId', '$facultyId', '$roomId', '$day', '$startTime', '$endTime')";
+            // Step 3: Insert into schedule_access table
+            $sql3 = "INSERT INTO schedule_access (Schedule_id, CourseSection_id) 
+                    VALUES ('$scheduleId', '$courseSectionId')";
             
-            if ($conn->query($sql2)) {
-                $scheduleId = $conn->insert_id;
-                
-                // Step 3: Insert into schedule_access table
-                $sql3 = "INSERT INTO schedule_access (Schedule_id, CourseSection_id) 
-                        VALUES ('$scheduleId', '$courseSectionId')";
-                
-                if ($conn->query($sql3)) {
-                    echo "<script>alert('Schedule added successfully!'); window.location.href='schedule.php';</script>";
-                } else {
-                    echo "Error adding schedule access: " . $conn->error;
-                }
+            if ($conn->query($sql3)) {
+                echo "<script>alert('Schedule added successfully!'); window.location.href='schedule.php';</script>";
             } else {
-                echo "Error adding schedule: " . $conn->error;
+                echo "Error adding schedule access: " . $conn->error;
             }
         } else {
-            echo "Error adding subject: " . $conn->error;
+            echo "Error adding schedule: " . $conn->error;
         }
+    } else {
+        echo "Error adding subject: " . $conn->error;
     }
 }
 
@@ -147,48 +128,28 @@ if (isset($_POST['updateSchedule'])) {
     $endTime = $_POST['endTime'];
     $courseSectionId = $_POST['courseSection'];
     
-    // Check for conflicts (excluding current schedule)
-    $conflictCheck = $conn->query("
-        SELECT sch.Schedule_id 
-        FROM schedule AS sch
-        JOIN schedule_access AS sa ON sch.Schedule_id = sa.Schedule_id
-        WHERE sch.Room_id = '$roomId' 
-        AND sch.Day = '$day'
-        AND sa.CourseSection_id = '$courseSectionId'
-        AND sch.Schedule_id != '$scheduleId'
-        AND (
-            (sch.Start_time <= '$startTime' AND sch.End_time > '$startTime') OR
-            (sch.Start_time < '$endTime' AND sch.End_time >= '$endTime') OR
-            (sch.Start_time >= '$startTime' AND sch.End_time <= '$endTime')
-        )
-    ");
+    // Update subject table
+    $sql1 = "UPDATE subject SET Code = '$subjectCode', Description = '$subjectDescription' WHERE Subject_id = '$subjectId'";
     
-    if ($conflictCheck->num_rows > 0) {
-        echo "<script>alert('Error: Schedule conflict detected! There is already a schedule for this room and course section at the same time.');</script>";
-    } else {
-        // Update subject table
-        $sql1 = "UPDATE subject SET Code = '$subjectCode', Description = '$subjectDescription' WHERE Subject_id = '$subjectId'";
+    if ($conn->query($sql1)) {
+        // Update schedule table
+        $sql2 = "UPDATE schedule SET Faculty_id = '$facultyId', Room_id = '$roomId', Day = '$day', 
+                 Start_time = '$startTime', End_time = '$endTime' WHERE Schedule_id = '$scheduleId'";
         
-        if ($conn->query($sql1)) {
-            // Update schedule table
-            $sql2 = "UPDATE schedule SET Faculty_id = '$facultyId', Room_id = '$roomId', Day = '$day', 
-                     Start_time = '$startTime', End_time = '$endTime' WHERE Schedule_id = '$scheduleId'";
+        if ($conn->query($sql2)) {
+            // Update schedule_access table
+            $sql3 = "UPDATE schedule_access SET CourseSection_id = '$courseSectionId' WHERE Schedule_id = '$scheduleId'";
             
-            if ($conn->query($sql2)) {
-                // Update schedule_access table
-                $sql3 = "UPDATE schedule_access SET CourseSection_id = '$courseSectionId' WHERE Schedule_id = '$scheduleId'";
-                
-                if ($conn->query($sql3)) {
-                    echo "<script>alert('Schedule updated successfully!'); window.location.href='schedule.php';</script>";
-                } else {
-                    echo "Error updating schedule access: " . $conn->error;
-                }
+            if ($conn->query($sql3)) {
+                echo "<script>alert('Schedule updated successfully!'); window.location.href='schedule.php';</script>";
             } else {
-                echo "Error updating schedule: " . $conn->error;
+                echo "Error updating schedule access: " . $conn->error;
             }
         } else {
-            echo "Error updating subject: " . $conn->error;
+            echo "Error updating schedule: " . $conn->error;
         }
+    } else {
+        echo "Error updating subject: " . $conn->error;
     }
 }
 
@@ -366,7 +327,6 @@ if (isset($_GET['edit_id'])) {
                 
                 // Display schedules grouped by course section
                 foreach ($groupedSchedules as $courseSectionId => $data) {
-                    echo "<div class='course-section-group'>";
                     echo "<h2 style='padding-top: 25px'>Schedule for {$data['name']}</h2>";
                     echo "<table>";
                     echo "<thead>
@@ -402,7 +362,7 @@ if (isset($_GET['edit_id'])) {
                             </tr>";
                     }
 
-                    echo "</tbody></table></div><br>";
+                    echo "</tbody></table><br>";
                 }
             } else {
                 echo "<div class='no-results'>No schedule found matching your criteria.</div>";
@@ -679,11 +639,9 @@ function clearFilters() {
 // Search functionality
 document.getElementById('searchInput').addEventListener('input', function() {
     const searchValue = this.value.toLowerCase();
-    const courseGroups = document.querySelectorAll('.course-section-group');
-    let anyGroupVisible = false;
+    const allTables = document.querySelectorAll('.schedule table');
 
-    courseGroups.forEach(group => {
-        const table = group.querySelector('table');
+    allTables.forEach(table => {
         const rows = table.querySelectorAll('tbody tr');
         let hasVisibleRow = false;
 
@@ -701,19 +659,24 @@ document.getElementById('searchInput').addEventListener('input', function() {
             if (matchFound) hasVisibleRow = true;
         });
 
-        // Show/hide the entire group
+        const title = table.previousElementSibling;
         if (hasVisibleRow || searchValue === '') {
-            group.style.display = '';
-            anyGroupVisible = true;
+            table.style.display = '';
+            if (title && title.tagName.toLowerCase() === 'h2') {
+                title.style.display = '';
+            }
         } else {
-            group.style.display = 'none';
+            table.style.display = 'none';
+            if (title && title.tagName.toLowerCase() === 'h2') {
+                title.style.display = 'none';
+            }
         }
     });
 
-    // Show message if no groups are visible
+    const visibleTables = Array.from(allTables).some(table => table.style.display !== 'none');
     let noResultsMsg = document.querySelector('.no-results-search');
-    
-    if (!anyGroupVisible && searchValue !== '') {
+
+    if (!visibleTables && searchValue !== '') {
         if (!noResultsMsg) {
             noResultsMsg = document.createElement('div');
             noResultsMsg.className = 'no-results-search';
