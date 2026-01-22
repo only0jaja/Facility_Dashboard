@@ -15,7 +15,7 @@ if (!isset($_SESSION['id'])) {
 }
 
 // Get current tab from URL or default to students
-$current_tab = isset($_GET['tab']) ? $_GET['tab'] : 'students';
+$current_tab = isset($_GET['tab']) ? $_GET['tab'] : 'all';
 
 // Handle form submission for adding user -----------------------------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_user'])) {
@@ -102,25 +102,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_user'])) {
         $error_message = "Please fill in all required fields!";
     }
 }
-
-// Handle user status update
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
+// Handle user update (EDIT USER)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
     $user_id = $_POST['user_id'];
+    $rfid_tag = trim($_POST['rfid_tag']);
+    $f_name = trim($_POST['f_name']);
+    $l_name = trim($_POST['l_name']);
+    $role = $_POST['role'];
     $status = $_POST['status'];
-
-    $update_sql = "UPDATE users SET Status = ? WHERE User_id = ?";
-    $update_stmt = mysqli_prepare($conn, $update_sql);
-
-    if ($update_stmt) {
-        mysqli_stmt_bind_param($update_stmt, "si", $status, $user_id);
-        if (mysqli_stmt_execute($update_stmt)) {
-            $success_message = "User status updated successfully!";
-            header("Location: users.php?tab=$current_tab");
+    
+    // Handle course section based on role
+    if ($role === 'Student') {
+        $courseSection_id = isset($_POST['courseSection_id']) ? $_POST['courseSection_id'] : null;
+        if (empty($courseSection_id)) {
+            $error_message = "Course Section is required for Students!";
+        } else {
+            $update_sql = "UPDATE users SET Rfid_tag = ?, F_name = ?, L_name = ?, Role = ?, Status = ?, CourseSection_id = ? WHERE User_id = ?";
+            $update_stmt = mysqli_prepare($conn, $update_sql);
+            mysqli_stmt_bind_param($update_stmt, "sssssii", $rfid_tag, $f_name, $l_name, $role, $status, $courseSection_id, $user_id);
+        }
+    } else {
+        // Faculty/Admin - set CourseSection_id to NULL
+        $update_sql = "UPDATE users SET Rfid_tag = ?, F_name = ?, L_name = ?, Role = ?, Status = ?, CourseSection_id = NULL WHERE User_id = ?";
+        $update_stmt = mysqli_prepare($conn, $update_sql);
+        mysqli_stmt_bind_param($update_stmt, "sssssi", $rfid_tag, $f_name, $l_name, $role, $status, $user_id);
+    }
+    
+    if (!isset($error_message)) {
+        if (isset($update_stmt) && mysqli_stmt_execute($update_stmt)) {
+            $success_message = "User updated successfully!";
+            // Redirect to appropriate tab
+            $redirect_tab = ($role === 'Student') ? 'students' : 'faculty';
+            header("Location: users.php?tab=$redirect_tab");
             exit();
         } else {
-            $error_message = "Error updating user status: " . mysqli_error($conn);
+            $error_message = "Error updating user: " . mysqli_error($conn);
         }
-        mysqli_stmt_close($update_stmt);
+        
+        if (isset($update_stmt)) {
+            mysqli_stmt_close($update_stmt);
+        }
     }
 }
 
@@ -272,6 +293,8 @@ $inactive_count = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as cou
     <link rel="stylesheet" href="styles/users.css">
     <!-- Sidebar Css -->
     <link rel="stylesheet" href="styles/sidebar.css">
+    <!-- Notif Css -->
+    <link rel="stylesheet" href="styles/notif.css">
 </head>
 
 <body>
@@ -338,6 +361,11 @@ $inactive_count = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as cou
 
             <!-- Tab Navigation -->
             <div class="tab-navigation">
+                <button class="tab-btn <?php echo $current_tab === 'all' ? 'active' : ''; ?>" data-tab="all">
+                    <i class="fas fa-users"></i>
+                    All Users
+                    <span class="tab-badge"><?php echo $student_count + $faculty_count + $inactive_count; ?></span>
+                </button>
                 <button class="tab-btn <?php echo $current_tab === 'students' ? 'active' : ''; ?>" data-tab="students">
                     <i class="fas fa-user-graduate"></i>
                     Students
@@ -348,26 +376,21 @@ $inactive_count = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as cou
                     Faculty
                     <span class="tab-badge"><?php echo $faculty_count; ?></span>
                 </button>
-                <button class="tab-btn <?php echo $current_tab === 'all' ? 'active' : ''; ?>" data-tab="all">
-                    <i class="fas fa-users"></i>
-                    All Users
-                    <span class="tab-badge"><?php echo $student_count + $faculty_count + $inactive_count; ?></span>
-                </button>
             </div>
 
             <div class="search-container">
                 <div class="filter-controls">
                     <?php if ($current_tab === 'students' || $current_tab === 'all'): ?>
-                        <select id="courseFilter">
-                            <option value="">All Courses</option>
-                            <?php
+                    <select id="courseFilter">
+                        <option value="">All Courses</option>
+                        <?php
                             $courseSql = "SELECT DISTINCT CourseSection FROM course_section ORDER BY CourseSection";
                             $courseResult = mysqli_query($conn, $courseSql);
                             while ($course = mysqli_fetch_assoc($courseResult)) {
                                 echo '<option value="' . htmlspecialchars($course['CourseSection']) . '">' . htmlspecialchars($course['CourseSection']) . '</option>';
                             }
                             ?>
-                        </select>
+                    </select>
                     <?php endif; ?>
 
                     <select id="statusFilter">
@@ -415,36 +438,42 @@ $inactive_count = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as cou
                                 $students = mysqli_query($conn, $student_sql);
                                 ?>
                                 <?php if (mysqli_num_rows($students) > 0): ?>
-                                    <?php while ($row = mysqli_fetch_assoc($students)): ?>
-                                        <tr>
-                                            <td><?php echo htmlspecialchars($row['User_id']); ?></td>
-                                            <td><?php echo htmlspecialchars($row['Rfid_tag']); ?></td>
-                                            <td><?php echo htmlspecialchars($row['F_name']); ?></td>
-                                            <td><?php echo htmlspecialchars($row['L_name']); ?></td>
-                                            <td><?php echo htmlspecialchars($row['CourseSection'] ?? 'N/A'); ?></td>
-                                            <td>
-                                                <span class="status-<?php echo strtolower($row['Status']); ?>">
-                                                    <?php echo htmlspecialchars($row['Status']); ?>
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <div class="action-buttons">
-                                                    <button class="btn-edit"
-                                                        onclick="openEditModal(<?php echo $row['User_id']; ?>, '<?php echo $row['F_name']; ?>', '<?php echo $row['L_name']; ?>', '<?php echo $row['Status']; ?>')">
-                                                        <i class="fas fa-edit"></i> Edit
-                                                    </button>
-                                                    <button class="btn-delete"
-                                                        onclick="openDeleteModal(<?php echo $row['User_id']; ?>, '<?php echo $row['F_name']; ?>', '<?php echo $row['L_name']; ?>', 'Student', '<?php echo $row['Status']; ?>')">
-                                                        <i class="fas fa-trash"></i> Delete
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    <?php endwhile; ?>
+                                <?php while ($row = mysqli_fetch_assoc($students)): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($row['User_id']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['Rfid_tag']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['F_name']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['L_name']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['CourseSection'] ?? 'N/A'); ?></td>
+                                    <td>
+                                        <span class="status-<?php echo strtolower($row['Status']); ?>">
+                                            <?php echo htmlspecialchars($row['Status']); ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button class="btn-edit" onclick="openEditModal(
+                                                <?php echo $row['User_id']; ?>, 
+                                                '<?php echo $row['F_name']; ?>', 
+                                                '<?php echo $row['L_name']; ?>', 
+                                                '<?php echo $row['Rfid_tag']; ?>', 
+                                                '<?php echo $row['Role']; ?>', 
+                                                '<?php echo $row['Status']; ?>', 
+                                                '<?php echo $row['courseSection_id'] ?? ''; ?>')">
+                                                <i class="fas fa-edit"></i> Edit
+                                            </button>
+                                            <button class="btn-delete"
+                                                onclick="openDeleteModal(<?php echo $row['User_id']; ?>, '<?php echo $row['F_name']; ?>', '<?php echo $row['L_name']; ?>', 'Student', '<?php echo $row['Status']; ?>')">
+                                                <i class="fas fa-trash"></i> Delete
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <?php endwhile; ?>
                                 <?php else: ?>
-                                    <tr>
-                                        <td colspan="7" class="no-results">No students found</td>
-                                    </tr>
+                                <tr>
+                                    <td colspan="7" class="no-results">No students found</td>
+                                </tr>
                                 <?php endif; ?>
                             </tbody>
                         </table>
@@ -469,35 +498,41 @@ $inactive_count = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as cou
                                 $faculty = mysqli_query($conn, $faculty_sql);
                                 ?>
                                 <?php if (mysqli_num_rows($faculty) > 0): ?>
-                                    <?php while ($row = mysqli_fetch_assoc($faculty)): ?>
-                                        <tr>
-                                            <td><?php echo htmlspecialchars($row['User_id']); ?></td>
-                                            <td><?php echo htmlspecialchars($row['Rfid_tag']); ?></td>
-                                            <td><?php echo htmlspecialchars($row['F_name']); ?></td>
-                                            <td><?php echo htmlspecialchars($row['L_name']); ?></td>
-                                            <td>
-                                                <span class="status-<?php echo strtolower($row['Status']); ?>">
-                                                    <?php echo htmlspecialchars($row['Status']); ?>
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <div class="action-buttons">
-                                                    <button class="btn-edit"
-                                                        onclick="openEditModal(<?php echo $row['User_id']; ?>, '<?php echo $row['F_name']; ?>', '<?php echo $row['L_name']; ?>', '<?php echo $row['Status']; ?>')">
-                                                        <i class="fas fa-edit"></i> Edit
-                                                    </button>
-                                                    <button class="btn-delete"
-                                                        onclick="openDeleteModal(<?php echo $row['User_id']; ?>, '<?php echo $row['F_name']; ?>', '<?php echo $row['L_name']; ?>', 'Faculty', '<?php echo $row['Status']; ?>')">
-                                                        <i class="fas fa-trash"></i> Delete
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    <?php endwhile; ?>
+                                <?php while ($row = mysqli_fetch_assoc($faculty)): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($row['User_id']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['Rfid_tag']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['F_name']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['L_name']); ?></td>
+                                    <td>
+                                        <span class="status-<?php echo strtolower($row['Status']); ?>">
+                                            <?php echo htmlspecialchars($row['Status']); ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button class="btn-edit" onclick="openEditModal(
+                                                <?php echo $row['User_id']; ?>, 
+                                                '<?php echo $row['F_name']; ?>', 
+                                                '<?php echo $row['L_name']; ?>', 
+                                                '<?php echo $row['Rfid_tag']; ?>', 
+                                                '<?php echo $row['Role']; ?>', 
+                                                '<?php echo $row['Status']; ?>', 
+                                                '<?php echo $row['courseSection_id'] ?? ''; ?>')">
+                                                <i class="fas fa-edit"></i> Edit
+                                            </button>
+                                            <button class="btn-delete"
+                                                onclick="openDeleteModal(<?php echo $row['User_id']; ?>, '<?php echo $row['F_name']; ?>', '<?php echo $row['L_name']; ?>', 'Faculty', '<?php echo $row['Status']; ?>')">
+                                                <i class="fas fa-trash"></i> Delete
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <?php endwhile; ?>
                                 <?php else: ?>
-                                    <tr>
-                                        <td colspan="6" class="no-results">No faculty members found</td>
-                                    </tr>
+                                <tr>
+                                    <td colspan="6" class="no-results">No faculty members found</td>
+                                </tr>
                                 <?php endif; ?>
                             </tbody>
                         </table>
@@ -527,41 +562,47 @@ $inactive_count = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as cou
                                 $all_users = mysqli_query($conn, $all_sql);
                                 ?>
                                 <?php if (mysqli_num_rows($all_users) > 0): ?>
-                                    <?php while ($row = mysqli_fetch_assoc($all_users)): ?>
-                                        <tr>
-                                            <td><?php echo htmlspecialchars($row['User_id']); ?></td>
-                                            <td><?php echo htmlspecialchars($row['Rfid_tag']); ?></td>
-                                            <td><?php echo htmlspecialchars($row['F_name']); ?></td>
-                                            <td><?php echo htmlspecialchars($row['L_name']); ?></td>
-                                            <td><?php echo htmlspecialchars($row['CourseSection'] ?? 'N/A'); ?></td>
-                                            <td>
-                                                <span class="role-<?php echo strtolower($row['Role']); ?>">
-                                                    <?php echo htmlspecialchars($row['Role']); ?>
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <span class="status-<?php echo strtolower($row['Status']); ?>">
-                                                    <?php echo htmlspecialchars($row['Status']); ?>
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <div class="action-buttons">
-                                                    <button class="btn-edit"
-                                                        onclick="openEditModal(<?php echo $row['User_id']; ?>, '<?php echo $row['F_name']; ?>', '<?php echo $row['L_name']; ?>', '<?php echo $row['Status']; ?>')">
-                                                        <i class="fas fa-edit"></i> Edit
-                                                    </button>
-                                                    <button class="btn-delete"
-                                                        onclick="openDeleteModal(<?php echo $row['User_id']; ?>, '<?php echo $row['F_name']; ?>', '<?php echo $row['L_name']; ?>', '<?php echo $row['Role']; ?>', '<?php echo $row['Status']; ?>')">
-                                                        <i class="fas fa-trash"></i> Delete
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    <?php endwhile; ?>
+                                <?php while ($row = mysqli_fetch_assoc($all_users)): ?>
+                                <tr>
+                                    <td><?php echo htmlspecialchars($row['User_id']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['Rfid_tag']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['F_name']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['L_name']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['CourseSection'] ?? 'N/A'); ?></td>
+                                    <td>
+                                        <span class="role-<?php echo strtolower($row['Role']); ?>">
+                                            <?php echo htmlspecialchars($row['Role']); ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="status-<?php echo strtolower($row['Status']); ?>">
+                                            <?php echo htmlspecialchars($row['Status']); ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="action-buttons">
+                                            <button class="btn-edit" onclick="openEditModal(
+                                                <?php echo $row['User_id']; ?>, 
+                                                '<?php echo $row['F_name']; ?>', 
+                                                '<?php echo $row['L_name']; ?>', 
+                                                '<?php echo $row['Rfid_tag']; ?>', 
+                                                '<?php echo $row['Role']; ?>', 
+                                                '<?php echo $row['Status']; ?>', 
+                                                '<?php echo $row['courseSection_id'] ?? ''; ?>')">
+                                                <i class="fas fa-edit"></i> Edit
+                                            </button>
+                                            <button class="btn-delete"
+                                                onclick="openDeleteModal(<?php echo $row['User_id']; ?>, '<?php echo $row['F_name']; ?>', '<?php echo $row['L_name']; ?>', '<?php echo $row['Role']; ?>', '<?php echo $row['Status']; ?>')">
+                                                <i class="fas fa-trash"></i> Delete
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <?php endwhile; ?>
                                 <?php else: ?>
-                                    <tr>
-                                        <td colspan="8" class="no-results">No users found</td>
-                                    </tr>
+                                <tr>
+                                    <td colspan="8" class="no-results">No users found</td>
+                                </tr>
                                 <?php endif; ?>
                             </tbody>
                         </table>
@@ -580,11 +621,11 @@ $inactive_count = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as cou
             </div>
 
             <?php if (isset($error_message)): ?>
-                <div class="alert alert-error"><?php echo $error_message; ?></div>
+            <div class="alert alert-error"><?php echo $error_message; ?></div>
             <?php endif; ?>
 
             <?php if (isset($success_message)): ?>
-                <div class="alert alert-success"><?php echo $success_message; ?></div>
+            <div class="alert alert-success"><?php echo $success_message; ?></div>
             <?php endif; ?>
 
             <form method="POST" action="" id="addUserForm">
@@ -654,24 +695,59 @@ $inactive_count = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as cou
         </div>
     </div>
 
-    <!-- Edit Status Modal -->
-    <div id="editStatusModal" class="modal">
+
+    <!-- Edit User Modal -->
+    <div id="editUserModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Edit User Status</h2>
+                <h2>Edit User</h2>
                 <span class="close">&times;</span>
             </div>
 
-            <form method="POST" action="">
-                <input type="hidden" id="edit_user_id" name="user_id">
+            <form method="POST" action="" id="editUserForm">
+                <input type="hidden" name="user_id" id="edit_user_id">
 
-                <div class="user-info">
-                    <p><strong>User:</strong> <span id="edit_user_name"></span></p>
-                    <p><strong>Current Status:</strong> <span id="edit_current_status"></span></p>
+                <div class="form-group">
+                    <label for="edit_rfid_tag">RFID Tag <span class="required">*</span></label>
+                    <input type="text" id="edit_rfid_tag" name="rfid_tag" required>
                 </div>
 
                 <div class="form-group">
-                    <label for="edit_status">New Status <span class="required">*</span></label>
+                    <label for="edit_f_name">First Name <span class="required">*</span></label>
+                    <input type="text" id="edit_f_name" name="f_name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit_l_name">Last Name <span class="required">*</span></label>
+                    <input type="text" id="edit_l_name" name="l_name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit_role">Role <span class="required">*</span></label>
+                    <select id="edit_role" name="role" required onchange="toggleCourseSectionEdit()">
+                        <option value="">Select Role</option>
+                        <option value="Student">Student</option>
+                        <option value="Faculty">Faculty</option>
+                        <option value="Admin">Admin</option>
+                    </select>
+                </div>
+
+                <div class="form-group" id="edit_courseSectionGroup" style="display: none;">
+                    <label for="edit_courseSection_id">Course Section</label>
+                    <select id="edit_courseSection_id" name="courseSection_id">
+                        <option value="">Select Course Section</option>
+                        <?php
+                        $courseSql = "SELECT * FROM course_section ORDER BY CourseSection";
+                        $courseResult = mysqli_query($conn, $courseSql);
+                        while ($course = mysqli_fetch_assoc($courseResult)) {
+                            echo '<option value="' . $course['CourseSection_id'] . '">' . htmlspecialchars($course['CourseSection']) . '</option>';
+                        }
+                        ?>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="edit_status">Status <span class="required">*</span></label>
                     <select id="edit_status" name="status" required>
                         <option value="">Select Status</option>
                         <option value="Active">Active</option>
@@ -681,11 +757,12 @@ $inactive_count = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as cou
 
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" id="cancelEditBtn">Cancel</button>
-                    <button type="submit" class="btn btn-primary" name="update_status">Update Status</button>
+                    <button type="submit" class="btn btn-primary" name="update_user">Save Changes</button>
                 </div>
             </form>
         </div>
     </div>
+
 
     <!-- Delete User Modal -->
     <div id="deleteUserModal" class="modal">
@@ -722,110 +799,8 @@ $inactive_count = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as cou
         </div>
     </div>
 
-    <script src="js/users.js"></script>
-    <script>
-        // Enhanced delete modal function with faculty restriction
-        function openDeleteModal(userId, firstName, lastName, role, status) {
-            // Check if it's a faculty member with active status
-            if (role === 'Faculty' && status === 'Active') {
-                alert('Cannot delete faculty member with Active status. Please set status to Inactive first.');
-                return;
-            }
+    <script src="js/user.js"></script>
 
-            // If not faculty or faculty is inactive, proceed with deletion modal
-            document.getElementById('delete_user_id').value = userId;
-            document.getElementById('delete_user_name').textContent = firstName + ' ' + lastName;
-            document.getElementById('delete_user_role').textContent = role;
-            document.getElementById('delete_user_status').textContent = status;
-
-            // Show appropriate warnings
-            const facultyWarning = document.getElementById('facultyWarning');
-            const foreignKeyWarning = document.getElementById('foreignKeyWarning');
-
-            if (role === 'Faculty') {
-                facultyWarning.style.display = 'block';
-                foreignKeyWarning.style.display = 'block';
-            } else {
-                facultyWarning.style.display = 'none';
-                foreignKeyWarning.style.display = 'block';
-            }
-
-            document.getElementById('deleteUserModal').style.display = 'block';
-        }
-
-        // Toggle course section based on role selection
-        function toggleCourseSection() {
-            const role = document.getElementById('role').value;
-            const courseSectionGroup = document.getElementById('courseSectionGroup');
-
-            if (role === 'Student') {
-                courseSectionGroup.style.display = 'block';
-            } else {
-                courseSectionGroup.style.display = 'none';
-            }
-        }
-
-        // Tab functionality
-        document.addEventListener('DOMContentLoaded', function () {
-            const tabButtons = document.querySelectorAll('.tab-btn');
-
-            tabButtons.forEach(button => {
-                button.addEventListener('click', function () {
-                    const tabName = this.getAttribute('data-tab');
-                    window.location.href = `users.php?tab=${tabName}`;
-                });
-            });
-
-            toggleCourseSection();
-        });
-
-    window.addEventListener("pageshow", function(event) {
-            if (event.persisted) {
-                window.location.reload();
-            }
-        });
-    </script>
-    <!-- JavaScript Section -->
-    <script>
-        // --------------------
-        // Toggle Course Section
-        // --------------------
-        function toggleCourseSection() {
-            const role = document.getElementById('role').value;
-            const courseGroup = document.getElementById('courseSectionGroup');
-            if (role === 'Student') {
-                courseGroup.style.display = 'block';
-            } else {
-                courseGroup.style.display = 'none';
-                document.getElementById('courseSection_id').value = '';
-            }
-        }
-
-        // --------------------
-        // Auto-fill RFID
-        // --------------------
-        let lastUID = '';
-
-        setInterval(() => {
-            fetch('http://localhost:5000/api/latest-rfid')
-                .then(res => res.json())
-                .then(data => {
-                    if (data.uid && data.uid !== lastUID) {
-                        document.getElementById('rfid_tag').value = data.uid;
-                        lastUID = data.uid;
-                    }
-                })
-                .catch(err => console.error('RFID fetch error:', err));
-        }, 1000);
-
-        // --------------------
-        // Cancel Button
-        // --------------------
-        document.getElementById('cancelBtn').addEventListener('click', () => {
-            document.getElementById('addUserForm').reset();
-            document.getElementById('courseSectionGroup').style.display = 'none';
-        });
-    </script>
 
 
 </body>

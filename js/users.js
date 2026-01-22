@@ -40,7 +40,7 @@ function openEditModal(userId, firstName, lastName, rfidTag, role, status, cours
     document.getElementById('edit_status').value = status;
     
     // Set course section if it exists
-    if (courseSectionId && courseSectionId !== '') {
+    if (courseSectionId && courseSectionId !== '' && courseSectionId !== null) {
         document.getElementById('edit_courseSection_id').value = courseSectionId;
     } else {
         document.getElementById('edit_courseSection_id').value = '';
@@ -51,23 +51,6 @@ function openEditModal(userId, firstName, lastName, rfidTag, role, status, cours
     
     // Show modal
     document.getElementById('editUserModal').style.display = 'block';
-}
-
-// Toggle course section field in edit modal based on role
-function toggleCourseSectionEdit() {
-    const role = document.getElementById('edit_role').value;
-    const courseSectionGroup = document.getElementById('edit_courseSectionGroup');
-    const courseRequired = document.getElementById('edit_courseRequired');
-    
-    console.log("Toggle course section for role:", role);
-    
-    if (role === 'Student') {
-        if (courseSectionGroup) courseSectionGroup.style.display = 'block';
-        if (courseRequired) courseRequired.style.display = 'inline';
-    } else {
-        if (courseSectionGroup) courseSectionGroup.style.display = 'none';
-        if (courseRequired) courseRequired.style.display = 'none';
-    }
 }
 
 // Open Add User Modal with pre-selected role
@@ -92,6 +75,20 @@ function openAddUserModal(role) {
 
     // Show modal
     document.getElementById('addUserModal').style.display = 'block';
+}
+
+// Toggle course section field in edit modal based on role
+function toggleCourseSectionEdit() {
+    const role = document.getElementById('edit_role').value;
+    const courseSectionGroup = document.getElementById('edit_courseSectionGroup');
+    
+    console.log("Toggle course section for role:", role);
+    
+    if (role === 'Student') {
+        if (courseSectionGroup) courseSectionGroup.style.display = 'block';
+    } else {
+        if (courseSectionGroup) courseSectionGroup.style.display = 'none';
+    }
 }
 
 // Enhanced form validation
@@ -471,3 +468,49 @@ document.addEventListener('keydown', function(event) {
         });
     }
 });
+
+// Toggle course section based on role selection
+function toggleCourseSection() {
+    const role = document.getElementById('role').value;
+    const courseSectionGroup = document.getElementById('courseSectionGroup');
+
+    if (role === 'Student') {
+        courseSectionGroup.style.display = 'block';
+    } else {
+        courseSectionGroup.style.display = 'none';
+    }
+}
+
+window.addEventListener("pageshow", function(event) {
+    if (event.persisted) {
+        window.location.reload();
+    }
+});
+
+// --------------------
+// Auto-fill RFID
+// --------------------
+let lastUID = '';
+
+setInterval(() => {
+    fetch('http://localhost:5000/api/latest-rfid')
+        .then(res => res.json())
+        .then(data => {
+            if (data.uid && data.uid !== lastUID) {
+                document.getElementById('rfid_tag').value = data.uid;
+                lastUID = data.uid;
+            }
+        })
+        .catch(err => console.error('RFID fetch error:', err));
+}, 1000);
+
+// --------------------
+// Cancel Button
+// --------------------
+document.getElementById('cancelBtn').addEventListener('click', () => {
+    document.getElementById('addUserForm').reset();
+    document.getElementById('courseSectionGroup').style.display = 'none';
+});
+
+document.getElementById('addUserBtn').addEventListener('click', () => openAddUserModal('Student'));
+
