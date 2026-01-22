@@ -779,7 +779,7 @@ $inactive_count = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as cou
             toggleCourseSection();
         });
 
-        window.addEventListener("pageshow", function (event) {
+    window.addEventListener("pageshow", function(event) {
             if (event.persisted) {
                 window.location.reload();
             }
