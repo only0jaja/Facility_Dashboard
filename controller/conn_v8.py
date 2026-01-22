@@ -129,9 +129,9 @@ class RFIDReader(threading.Thread):
         
         try:
             self.db.execute("""
-                INSERT INTO access_log (User_id, Rfid_tag, Room_id, Access_time, Access_type, Status, Reason)
-                VALUES (%s, %s, %s, NOW(), %s, %s, %s)
-            """, (user_id, uid, self.room_id, access_type, status, reason))
+                INSERT INTO access_log (User_id, Rfid_tag, Room_id, Access_time, Access_type, Status)
+                VALUES (%s, %s, %s, NOW(), %s, %s)
+            """, (user_id, uid, self.room_id, access_type, status))
             logger.info(f"Access: {access_type}, UID {uid}, Room {self.room_id}, {status}")
         except Exception as e:
             logger.error(f"Failed to log access: {e}")
